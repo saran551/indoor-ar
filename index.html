@@ -24,14 +24,14 @@
     <label for="destination"><b>Select Location:</b></label><br>
     <select id="destination">
       <option value="elections_lab">Elections Lab</option>
-      <option value="canteen">Canteen</option>
-      <option value="library">Library</option>
+      <option value="hroffice">hroffice</option>
+      <option value="store">store</option>
     </select>
     <button onclick="startNavigation()">Go</button>
   </div>
 
   <!-- AR Camera Scene -->
-  <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
+  <a-scene embedded vr-mode-ui="enabled: false" arjs="sourceType: webcam; debugUIEnabled: false;">
     <!-- 3D Directional Arrow -->
     <a-entity id="ar-arrow" position="0 -0.5 -2" rotation="0 0 0" visible="false">
       <a-cone color="#00FFFF" radius-bottom="0.25" radius-top="0" height="0.8" rotation="90 0 0"></a-cone>
@@ -49,9 +49,9 @@
       // Dynamic Direction Logic
       if(dest === 'elections_lab') {
         arrow.setAttribute('rotation', '0 -45 0'); // Point Left
-      } else if(dest === 'canteen') {
+      } else if(dest === 'hroffice') {
         arrow.setAttribute('rotation', '0 45 0');  // Point Right
-      } else if(dest === 'library') {
+      } else if(dest === 'store') {
         arrow.setAttribute('rotation', '0 0 0');   // Straight Ahead
       }
     }
