@@ -1,60 +1,265 @@
+
+
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Indoor AR Navigation</title>
-  <!-- AR Libraries -->
+  <title>CPPS AR Live Navigation</title>
   <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
   <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
   <style>
-    #ui-overlay {
-      position: fixed; top: 15px; left: 15px; z-index: 9999;
-      background: rgba(0, 0, 0, 0.8); padding: 15px; border-radius: 10px; color: #fff;
-      font-family: sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; color: #fff; }
+
+    /* Landing QR Gate */
+    #qr-gate {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      background: #0d1117;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 99999;
+      text-align: center;
+      padding: 20px;
     }
-    select, button {
-      padding: 8px 12px; margin-top: 8px; border-radius: 5px; border: none; font-size: 14px;
+
+    .start-btn {
+      margin-top: 20px;
+      padding: 12px 24px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
     }
-    button { background: #007bff; color: white; font-weight: bold; cursor: pointer; }
+
+    /* Top AR View (Camera) */
+    #ar-view {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 55vh;
+      z-index: 1;
+      display: none;
+    }
+
+    /* Top Navigation Header Bar */
+    #nav-header {
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      background: #1a73e8;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 25px;
+      display: none;
+      align-items: center;
+      gap: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      font-weight: 600;
+    }
+
+    select {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      outline: none;
+    }
+
+    /* Bottom Split Map View */
+    #map-view {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 45vh;
+      background: #ffffff;
+      z-index: 9999;
+      border-top-left-radius: 20px;
+      border-top-right-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
+      display: none;
+      flex-direction: column;
+    }
+
+    .map-wrapper {
+      position: relative;
+      width: 100%;
+      height: 75%;
+      background: #f8f9fa;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .map-wrapper img {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+    }
+
+    /* Live Navigation Blue Dot Path & Pin */
+    .user-dot {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #1a73e8;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(26, 115, 232, 0.8);
+      top: 75%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .target-pin {
+      position: absolute;
+      padding: 6px 12px;
+      background: #ea4335;
+      color: white;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      top: 25%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    /* Bottom Info Card */
+    #destination-card {
+      height: 25%;
+      background: #fff;
+      border-top: 1px solid #eee;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      color: #202124;
+    }
+
+    .card-info h3 { font-size: 16px; margin-bottom: 2px; }
+    .card-info p { font-size: 12px; color: #5f6368; }
   </style>
 </head>
-<body style="margin: 0; overflow: hidden;">
+<body>
 
-  <!-- UI Overlay for Selecting Destination -->
-  <div id="ui-overlay">
-    <label for="destination"><b>Select Location:</b></label><br>
-    <select id="destination">
-      <option value="elections_lab">Elections Lab</option>
-      <option value="hroffice">hroffice</option>
-      <option value="store">store</option>
-    </select>
-    <button onclick="startNavigation()">Go</button>
+  <!-- Landing Gate (Scan QR or Start) -->
+  <div id="qr-gate">
+    <h2>📍 CPPS AR Indoor Navigation</h2>
+    <p style="margin-top: 10px; color: #8b949e;">Scan CPPS Entrance QR Code or click below to start navigation.</p>
+    <button class="start-btn" onclick="enableAR()">Start AR Live View</button>
   </div>
 
-  <!-- AR Camera Scene -->
-  <a-scene embedded vr-mode-ui="enabled: false" arjs="sourceType: webcam; debugUIEnabled: false;">
-    <!-- 3D Directional Arrow -->
-    <a-entity id="ar-arrow" position="0 -0.5 -2" rotation="0 0 0" visible="false">
-      <a-cone color="#00FFFF" radius-bottom="0.25" radius-top="0" height="0.8" rotation="90 0 0"></a-cone>
-    </a-entity>
-    <a-entity camera></a-entity>
-  </a-scene>
+  <!-- Top Navigation Header -->
+  <div id="nav-header">
+    <span>➔ Target:</span>
+    <select id="destination" onchange="changeTarget()">
+      <option value="electronics_lab">Electronics Lab</option>
+      <option value="spot_2">CPPS Corridor / Way</option>
+      <option value="spot_3">Main Reception / Entry</option>
+      <option value="spot_4">CPPS Main Floor</option>
+    </select>
+  </div>
+
+  <!-- AR Camera View -->
+  <div id="ar-view">
+    <a-scene embedded vr-mode-ui="enabled: false" arjs="sourceType: webcam; debugUIEnabled: false;">
+      
+      <!-- AR Path Dots -->
+      <a-entity id="ar-path">
+        <a-cylinder position="0 -1 -1.5" radius="0.1" height="0.01" color="#1a73e8"></a-cylinder>
+        <a-cylinder position="0 -1 -3.0" radius="0.1" height="0.01" color="#1a73e8"></a-cylinder>
+        <a-cylinder position="0 -1 -4.5" radius="0.1" height="0.01" color="#1a73e8"></a-cylinder>
+        
+        <!-- Floating Target Badge -->
+        <a-box id="target-badge" position="0 0.2 -5" depth="0.1" height="0.5" width="1.8" color="#1a73e8">
+          <a-text id="badge-text" value="Electronics Lab" align="center" position="0 0 0.1" scale="1 1 1" color="#ffffff"></a-text>
+        </a-box>
+      </a-entity>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+  </div>
+
+  <!-- Bottom Google Map Style Layout -->
+  <div id="map-view">
+    <div class="map-wrapper">
+      <img id="floor-plan-img" src="IMG_20260907_124812.jpg" alt="CPPS Floor Plan">
+      <div class="user-dot"></div>
+      <div id="target-pin" class="target-pin">Electronics Lab</div>
+    </div>
+
+    <!-- Bottom Destination Card -->
+    <div id="destination-card">
+      <div class="card-info">
+        <h3 id="card-title">Electronics Lab</h3>
+        <p id="card-sub">CPPS Indoor Spot • Live Route Active</p>
+      </div>
+    </div>
+  </div>
 
   <script>
-    function startNavigation() {
+    // QR Code Auto Start Check
+    window.onload = function() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('start') === 'true') {
+        enableAR();
+      }
+    };
+
+    function enableAR() {
+      document.getElementById('qr-gate').style.display = 'none';
+      document.getElementById('ar-view').style.display = 'block';
+      document.getElementById('nav-header').style.display = 'flex';
+      document.getElementById('map-view').style.display = 'flex';
+      changeTarget();
+    }
+
+    function changeTarget() {
       const dest = document.getElementById('destination').value;
-      const arrow = document.getElementById('ar-arrow');
-      
-      arrow.setAttribute('visible', 'true');
-      
-      // Dynamic Direction Logic
-      if(dest === 'elections_lab') {
-        arrow.setAttribute('rotation', '0 -45 0'); // Point Left
-      } else if(dest === 'hroffice') {
-        arrow.setAttribute('rotation', '0 45 0');  // Point Right
-      } else if(dest === 'store') {
-        arrow.setAttribute('rotation', '0 0 0');   // Straight Ahead
+      const badgeText = document.getElementById('badge-text');
+      const pin = document.getElementById('target-pin');
+      const title = document.getElementById('card-title');
+      const img = document.getElementById('floor-plan-img');
+
+      // Mapping uploaded image names directly
+      if (dest === 'electronics_lab') {
+        title.innerText = "Electronics Lab";
+        pin.innerText = "Electronics Lab";
+        badgeText.setAttribute('value', 'Electronics Lab');
+        img.src = "IMG_20260907_124812.jpg";
+      } else if (dest === 'spot_2') {
+        title.innerText = "CPPS Corridor / Way";
+        pin.innerText = "Corridor";
+        badgeText.setAttribute('value', 'Corridor');
+        img.src = "IMG_20260907_124840.jpg";
+      } else if (dest === 'spot_3') {
+        title.innerText = "Main Reception / Entry";
+        pin.innerText = "Reception";
+        badgeText.setAttribute('value', 'Reception');
+        img.src = "IMG_20260907_124852.jpg";
+      } else if (dest === 'spot_4') {
+        title.innerText = "CPPS Main Floor";
+        pin.innerText = "Main Floor";
+        badgeText.setAttribute('value', 'Main Floor');
+        img.src = "IMG_20260910_081343.jpg";
       }
     }
   </script>
 </body>
 </html>
+
+Displaying IMG_20260907_124840.jpg.
