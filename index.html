@@ -1,5 +1,4 @@
 
-
 <!DOCTYPE html>
 <html>
 <head>
@@ -10,144 +9,60 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; color: #fff; }
 
-    /* Landing QR Gate */
     #qr-gate {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100vh;
-      background: #0d1117;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 99999;
-      text-align: center;
-      padding: 20px;
+      position: absolute; top: 0; left: 0; width: 100%; height: 100vh;
+      background: #0d1117; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; z-index: 99999;
+      text-align: center; padding: 20px;
     }
 
     .start-btn {
-      margin-top: 20px;
-      padding: 12px 24px;
-      background: #1a73e8;
-      color: white;
-      border: none;
-      border-radius: 20px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
+      margin-top: 20px; padding: 12px 24px; background: #1a73e8;
+      color: white; border: none; border-radius: 20px; font-size: 16px;
+      font-weight: bold; cursor: pointer;
     }
 
-    /* Top AR View (Camera) */
-    #ar-view {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 55vh;
-      z-index: 1;
-      display: none;
-    }
+    #ar-view { position: absolute; top: 0; left: 0; width: 100%; height: 55vh; z-index: 1; display: none; }
 
-    /* Top Navigation Header Bar */
     #nav-header {
-      position: absolute;
-      top: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-      background: #1a73e8;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 25px;
-      display: none;
-      align-items: center;
-      gap: 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      font-weight: 600;
+      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; background: #1a73e8; color: white; padding: 10px 20px;
+      border-radius: 25px; display: none; align-items: center; gap: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-weight: 600;
     }
 
-    select {
-      background: transparent;
-      border: none;
-      color: white;
-      font-size: 15px;
-      font-weight: bold;
-      outline: none;
-    }
+    select { background: transparent; border: none; color: white; font-size: 15px; font-weight: bold; outline: none; }
 
-    /* Bottom Split Map View */
     #map-view {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 45vh;
-      background: #ffffff;
-      z-index: 9999;
-      border-top-left-radius: 20px;
-      border-top-right-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 -5px 20px rgba(0,0,0,0.2);
-      display: none;
-      flex-direction: column;
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 45vh;
+      background: #ffffff; z-index: 9999; border-top-left-radius: 20px;
+      border-top-right-radius: 20px; overflow: hidden;
+      box-shadow: 0 -5px 20px rgba(0,0,0,0.2); display: none; flex-direction: column;
     }
 
     .map-wrapper {
-      position: relative;
-      width: 100%;
-      height: 75%;
-      background: #f8f9fa;
-      display: flex;
-      justify-content: center;
-      align-items: center;
+      position: relative; width: 100%; height: 75%; background: #f8f9fa;
+      display: flex; justify-content: center; align-items: center;
     }
 
-    .map-wrapper img {
-      max-width: 90%;
-      max-height: 90%;
-      object-fit: contain;
-    }
+    .map-wrapper img { max-width: 90%; max-height: 90%; object-fit: contain; }
 
-    /* Live Navigation Blue Dot Path & Pin */
     .user-dot {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      background: #1a73e8;
-      border: 3px solid white;
-      border-radius: 50%;
-      box-shadow: 0 0 10px rgba(26, 115, 232, 0.8);
-      top: 75%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      position: absolute; width: 20px; height: 20px; background: #1a73e8;
+      border: 3px solid white; border-radius: 50%; box-shadow: 0 0 10px rgba(26, 115, 232, 0.8);
+      top: 75%; left: 50%; transform: translate(-50%, -50%);
     }
 
     .target-pin {
-      position: absolute;
-      padding: 6px 12px;
-      background: #ea4335;
-      color: white;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: bold;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      top: 25%;
-      left: 50%;
-      transform: translate(-50%, -50%);
+      position: absolute; padding: 6px 12px; background: #ea4335; color: white;
+      border-radius: 12px; font-size: 12px; font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3); top: 25%; left: 50%; transform: translate(-50%, -50%);
     }
 
-    /* Bottom Info Card */
     #destination-card {
-      height: 25%;
-      background: #fff;
-      border-top: 1px solid #eee;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 0 20px;
-      color: #202124;
+      height: 25%; background: #fff; border-top: 1px solid #eee;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px; color: #202124;
     }
 
     .card-info h3 { font-size: 16px; margin-bottom: 2px; }
@@ -156,14 +71,12 @@
 </head>
 <body>
 
-  <!-- Landing Gate (Scan QR or Start) -->
   <div id="qr-gate">
     <h2>📍 CPPS AR Indoor Navigation</h2>
     <p style="margin-top: 10px; color: #8b949e;">Scan CPPS Entrance QR Code or click below to start navigation.</p>
     <button class="start-btn" onclick="enableAR()">Start AR Live View</button>
   </div>
 
-  <!-- Top Navigation Header -->
   <div id="nav-header">
     <span>➔ Target:</span>
     <select id="destination" onchange="changeTarget()">
@@ -174,17 +87,29 @@
     </select>
   </div>
 
-  <!-- AR Camera View -->
   <div id="ar-view">
     <a-scene embedded vr-mode-ui="enabled: false" arjs="sourceType: webcam; debugUIEnabled: false;">
       
-      <!-- AR Path Dots -->
+      <!-- GREEN 3D DIRECTIONAL ARROWS -->
       <a-entity id="ar-path">
-        <a-cylinder position="0 -1 -1.5" radius="0.1" height="0.01" color="#1a73e8"></a-cylinder>
-        <a-cylinder position="0 -1 -3.0" radius="0.1" height="0.01" color="#1a73e8"></a-cylinder>
-        <a-cylinder position="0 -1 -4.5" radius="0.1" height="0.01" color="#1a73e8"></a-cylinder>
-        
-        <!-- Floating Target Badge -->
+        <!-- Arrow 1 -->
+        <a-entity position="0 -0.8 -1.5" rotation="0 0 0">
+          <a-cone radius-bottom="0.2" radius-top="0" height="0.4" color="#00E676" rotation="-90 0 0"></a-cone>
+          <a-cylinder radius="0.08" height="0.4" color="#00E676" position="0 0 0.3" rotation="-90 0 0"></a-cylinder>
+        </a-entity>
+
+        <!-- Arrow 2 -->
+        <a-entity position="0 -0.8 -3.0" rotation="0 0 0">
+          <a-cone radius-bottom="0.2" radius-top="0" height="0.4" color="#00E676" rotation="-90 0 0"></a-cone>
+          <a-cylinder radius="0.08" height="0.4" color="#00E676" position="0 0 0.3" rotation="-90 0 0"></a-cylinder>
+        </a-entity>
+
+        <!-- Arrow 3 -->
+        <a-entity position="0 -0.8 -4.5" rotation="0 0 0">
+          <a-cone radius-bottom="0.2" radius-top="0" height="0.4" color="#00E676" rotation="-90 0 0"></a-cone>
+          <a-cylinder radius="0.08" height="0.4" color="#00E676" position="0 0 0.3" rotation="-90 0 0"></a-cylinder>
+        </a-entity>
+
         <a-box id="target-badge" position="0 0.2 -5" depth="0.1" height="0.5" width="1.8" color="#1a73e8">
           <a-text id="badge-text" value="Electronics Lab" align="center" position="0 0 0.1" scale="1 1 1" color="#ffffff"></a-text>
         </a-box>
@@ -194,7 +119,6 @@
     </a-scene>
   </div>
 
-  <!-- Bottom Google Map Style Layout -->
   <div id="map-view">
     <div class="map-wrapper">
       <img id="floor-plan-img" src="IMG_20260907_124812.jpg" alt="CPPS Floor Plan">
@@ -202,7 +126,6 @@
       <div id="target-pin" class="target-pin">Electronics Lab</div>
     </div>
 
-    <!-- Bottom Destination Card -->
     <div id="destination-card">
       <div class="card-info">
         <h3 id="card-title">Electronics Lab</h3>
@@ -212,7 +135,6 @@
   </div>
 
   <script>
-    // QR Code Auto Start Check
     window.onload = function() {
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.get('start') === 'true') {
@@ -235,7 +157,6 @@
       const title = document.getElementById('card-title');
       const img = document.getElementById('floor-plan-img');
 
-      // Mapping uploaded image names directly
       if (dest === 'electronics_lab') {
         title.innerText = "Electronics Lab";
         pin.innerText = "Electronics Lab";
