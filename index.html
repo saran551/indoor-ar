@@ -1,8 +1,7 @@
-
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Electronics Lab AR Navigation</title>
+  <title>Google Live View AR Real-Time Navigation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
@@ -15,25 +14,23 @@
     video { width: 100%; height: 100%; object-fit: cover; }
     #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-    /* Top Google Banner Instruction */
+    /* Top Google Live View Banner */
     #turn-banner {
       position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; background: #1b5e20; color: white; padding: 10px 18px;
-      border-radius: 30px; display: flex; align-items: center; gap: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-weight: bold; font-size: 14px; width: 90%; max-width: 400px;
+      z-index: 9999; background: #1a73e8; color: white; padding: 12px 20px;
+      border-radius: 30px; display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-weight: bold; font-size: 14px; width: 92%; max-width: 400px;
+    }
+    #turn-icon { font-size: 22px; }
+
+    /* GPS & Sensor Live Status */
+    #live-status {
+      position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; background: rgba(0,0,0,0.75); color: #00ff66; padding: 5px 14px;
+      border-radius: 15px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
     }
 
-    /* Step Navigation Controls */
-    #nav-controls {
-      position: absolute; top: 65px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; display: flex; gap: 10px;
-    }
-    .step-btn {
-      background: #1a73e8; color: white; border: none; padding: 8px 16px;
-      border-radius: 20px; font-weight: bold; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-
-    /* Bottom Map Split View */
+    /* Bottom Map View */
     #map-view {
       position: absolute; bottom: 0; left: 0; width: 100%; height: 45vh;
       background: #ffffff; z-index: 9999; border-top-left-radius: 20px;
@@ -42,7 +39,7 @@
     }
 
     .map-wrapper {
-      position: relative; width: 100%; height: 70%; background: #222;
+      position: relative; width: 100%; height: 70%; background: #111;
       display: flex; justify-content: center; align-items: center; overflow: hidden;
     }
     .map-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; }
@@ -65,7 +62,7 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 18px; color: #202124;
     }
-    .card-info h3 { font-size: 15px; margin-bottom: 2px; }
+    .card-info h3 { font-size: 15px; margin-bottom: 2px; color: #1a73e8; }
     .card-info p { font-size: 11px; color: #5f6368; }
   </style>
 </head>
@@ -76,10 +73,7 @@
     <span id="turn-text">Walk 2m straight, then TURN RIGHT</span>
   </div>
 
-  <div id="nav-controls">
-    <button class="step-btn" onclick="prevStep()">◀ Back</button>
-    <button class="step-btn" onclick="nextStep()">Next Waypoint ▶</button>
-  </div>
+  <div id="live-status">● Live Tracking Active (Compass & Motion)</div>
 
   <div id="camera-container">
     <video id="webcam" autoplay playsinline muted></video>
@@ -88,24 +82,26 @@
 
   <div id="map-view">
     <div class="map-wrapper">
-      <img id="floor-img" src="" alt="" onerror="this.style.display='none'">
+      <img id="floor-img" src="1000395810.jpg" alt="Location" onerror="this.style.display='none'">
       <div class="user-dot"></div>
     </div>
 
     <div id="destination-card">
       <div class="card-info">
-        <h3 id="card-title">Step 1: Start Point</h3>
-        <p id="card-sub">Destination: Electronics Lab • Total distance ~21m</p>
+        <h3 id="card-title">Live Spot: Start Point</h3>
+        <p id="card-sub">Auto Step Detection Active • Next: Corridor</p>
       </div>
     </div>
   </div>
 
   <script>
+    // Live Camera Setup
     const video = document.getElementById('webcam');
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => { video.srcObject = stream; })
       .catch(err => { console.error("Camera error", err); });
 
+    // 3D ThreeJS Scene
     const canvas = document.getElementById('ar-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true, antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight * 0.55);
@@ -117,6 +113,7 @@
     const pathGroup = new THREE.Group();
     scene.add(pathGroup);
 
+    // 3D Blue Live Arrows
     const arrows = [];
     const arrowMat = new THREE.MeshBasicMaterial({ color: 0x1a73e8 });
 
@@ -140,6 +137,7 @@
       arrows.push(arrowGroup);
     }
 
+    // Waypoint Data
     const waypoints = [
       {
         title: "Step 1: Start Point",
@@ -147,35 +145,41 @@
         icon: "↗️",
         instruction: "Walk 2m straight, then TURN RIGHT",
         img: "1000395810.jpg",
-        rotation: Math.PI / 4
+        rotation: Math.PI / 4,
+        distance: 2
       },
       {
         title: "Step 2: Corridor",
-        sub: "Walk 12 meters straight",
+        sub: "Walk 12 meters along Corridor",
         icon: "⬆️",
         instruction: "Walk 12m along Corridor, then TURN LEFT",
         img: "1000395809.jpg",
-        rotation: 0
+        rotation: 0,
+        distance: 12
       },
       {
         title: "Step 3: Electronics Lab Way",
         sub: "Walk 7 meters straight",
         icon: "↖️",
-        instruction: "Walk 7m straight, then TURN LEFT for Lab",
+        instruction: "Walk 7m straight, then TURN LEFT for Lab Entrance",
         img: "1000395808.jpg",
-        rotation: -Math.PI / 4
+        rotation: -Math.PI / 4,
+        distance: 7
       },
       {
-        title: "Step 4: Electronics Lab",
-        sub: "You have arrived at your destination!",
+        title: "Step 4: Electronics Lab Entrance",
+        sub: "Destination Reached!",
         icon: "📍",
-        instruction: "ARRIVED: Electronics Lab Entrance",
+        instruction: "ARRIVED: Electronics Lab",
         img: "1000396488.jpg",
-        rotation: 0
+        rotation: 0,
+        distance: 0
       }
     ];
 
     let currentStep = 0;
+    let stepCounter = 0;
+    let lastAccel = 0;
 
     function updateNavigation() {
       const wp = waypoints[currentStep];
@@ -191,19 +195,41 @@
       pathGroup.rotation.y = wp.rotation;
     }
 
-    function nextStep() {
-      if (currentStep < waypoints.length - 1) {
-        currentStep++;
-        updateNavigation();
-      }
-    }
+    // Real-Time Pedometer / Walking Detection (Motion Sensor)
+    window.addEventListener('devicemotion', (event) => {
+      let acc = event.accelerationIncludingGravity;
+      if (!acc) return;
 
-    function prevStep() {
-      if (currentStep > 0) {
-        currentStep--;
-        updateNavigation();
+      let totalAcc = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+      
+      // Step detection threshold (~12 m/s2)
+      if (totalAcc > 12.5 && (Date.now() - lastAccel > 600)) {
+        lastAccel = Date.now();
+        stepCounter++;
+
+        // Every ~3 steps = 2 meters walking calculation
+        let calculatedMeters = Math.max(0, waypoints[currentStep].distance - Math.floor(stepCounter * 0.7));
+        
+        if (calculatedMeters > 0) {
+          document.getElementById('turn-text').innerText = `Walk ${calculatedMeters}m straight...`;
+        } else {
+          // Auto switch to next waypoint when target distance reached!
+          if (currentStep < waypoints.length - 1) {
+            currentStep++;
+            stepCounter = 0;
+            updateNavigation();
+          }
+        }
       }
-    }
+    });
+
+    // Real-time Compass Sensor
+    window.addEventListener('deviceorientation', (event) => {
+      if (event.alpha !== null) {
+        let alpha = event.alpha;
+        pathGroup.rotation.y = THREE.MathUtils.degToRad(-alpha) + waypoints[currentStep].rotation;
+      }
+    });
 
     let clock = new THREE.Clock();
     function animate() {
