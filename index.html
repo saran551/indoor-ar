@@ -1,7 +1,8 @@
+
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Google Live View AR Indoor Navigation</title>
+  <title>Electronics Lab Live Navigation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
@@ -14,22 +15,24 @@
     video { width: 100%; height: 100%; object-fit: cover; }
     #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-    /* Google Maps Turn Banner */
+    /* Top Google Banner Instruction */
     #turn-banner {
       position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; background: #1b5e20; color: white; padding: 10px 20px;
-      border-radius: 25px; display: flex; align-items: center; gap: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-weight: bold; font-size: 15px; width: 90%; max-width: 380px;
+      z-index: 9999; background: #1b5e20; color: white; padding: 12px 20px;
+      border-radius: 30px; display: flex; align-items: center; gap: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-weight: bold; font-size: 15px; width: 90%; max-width: 400px;
     }
-    #turn-icon { font-size: 22px; }
+    #turn-icon { font-size: 24px; }
 
-    #nav-header {
-      position: absolute; top: 70px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; background: #1a73e8; color: white; padding: 6px 16px;
-      border-radius: 20px; display: flex; align-items: center; gap: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3); font-size: 13px; font-weight: 600;
+    /* Step Navigation Controls */
+    #nav-controls {
+      position: absolute; top: 75px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; display: flex; gap: 10px;
     }
-    select { background: transparent; border: none; color: white; font-size: 13px; font-weight: bold; outline: none; }
+    .step-btn {
+      background: #1a73e8; color: white; border: none; padding: 8px 16px;
+      border-radius: 20px; font-weight: bold; font-size: 13px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
 
     /* Bottom Map Split View */
     #map-view {
@@ -40,20 +43,15 @@
     }
 
     .map-wrapper {
-      position: relative; width: 100%; height: 75%; background: #e8eaed;
+      position: relative; width: 100%; height: 75%; background: #111;
       display: flex; justify-content: center; align-items: center; overflow: hidden;
     }
-    .map-wrapper img { max-width: 95%; max-height: 95%; object-fit: contain; }
-
-    .route-line {
-      position: absolute; width: 4px; height: 120px; background: repeating-linear-gradient(to bottom, #1a73e8 0px, #1a73e8 8px, transparent 8px, transparent 16px);
-      top: 35%; left: 50%; transform: translateX(-50%); opacity: 0.8;
-    }
+    .map-wrapper img { max-width: 100%; max-height: 100%; object-fit: contain; }
 
     .user-dot {
       position: absolute; width: 22px; height: 22px; background: #1a73e8;
       border: 3px solid white; border-radius: 50%;
-      box-shadow: 0 0 12px rgba(26, 115, 232, 0.8); top: 75%; left: 50%;
+      box-shadow: 0 0 12px rgba(26, 115, 232, 0.8); top: 80%; left: 50%;
       transform: translate(-50%, -50%); animation: pulse 1.8s infinite;
     }
 
@@ -61,13 +59,6 @@
       0% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.6); }
       70% { box-shadow: 0 0 0 14px rgba(26, 115, 232, 0); }
       100% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0); }
-    }
-
-    .target-pin {
-      position: absolute; padding: 6px 14px; background: #ea4335; color: white;
-      border-radius: 14px; font-size: 11px; font-weight: bold;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.3); top: 25%; left: 50%;
-      transform: translate(-50%, -50%);
     }
 
     #destination-card {
@@ -81,19 +72,15 @@
 </head>
 <body>
 
+  <!-- Live Turn Instructions Banner -->
   <div id="turn-banner">
     <span id="turn-icon">⬆️</span>
-    <span id="turn-text">Head straight 10 meters</span>
+    <span id="turn-text">Walk 2 meters straight</span>
   </div>
 
-  <div id="nav-header">
-    <span>📍 Destination:</span>
-    <select id="destination" onchange="changeTarget()">
-      <option value="electronics_lab">Electronics Lab</option>
-      <option value="spot_2">CPPS Corridor / Way</option>
-      <option value="spot_3">Main Reception / Entry</option>
-      <option value="spot_4">CPPS Main Floor</option>
-    </select>
+  <div id="nav-controls">
+    <button class="step-btn" onclick="prevStep()">◀ Back</button>
+    <button class="step-btn" onclick="nextStep()">Next Waypoint ▶</button>
   </div>
 
   <div id="camera-container">
@@ -103,16 +90,14 @@
 
   <div id="map-view">
     <div class="map-wrapper">
-      <img id="floor-plan-img" src="IMG_20260907_124812.jpg" alt="CPPS Floor Plan">
-      <div class="route-line"></div>
+      <img id="floor-img" src="1000395810.jpg" alt="Current Location">
       <div class="user-dot"></div>
-      <div id="target-pin" class="target-pin">Electronics Lab</div>
     </div>
 
     <div id="destination-card">
       <div class="card-info">
-        <h3 id="card-title">Electronics Lab</h3>
-        <p id="card-sub">Turn Right ahead in 5m • AR Live Route</p>
+        <h3 id="card-title">Step 1: Start Point</h3>
+        <p id="card-sub">Destination: Electronics Lab • Total distance ~21m</p>
       </div>
     </div>
   </div>
@@ -134,7 +119,7 @@
     const pathGroup = new THREE.Group();
     scene.add(pathGroup);
 
-    // Blue AR Arrows
+    // Create 3D Blue Live View Arrows
     const arrows = [];
     const arrowMat = new THREE.MeshBasicMaterial({ color: 0x1a73e8 });
 
@@ -158,24 +143,73 @@
       arrows.push(arrowGroup);
     }
 
-    // Floating Target Badge
-    const canvasBadge = document.createElement('canvas');
-    canvasBadge.width = 256; canvasBadge.height = 128;
-    const ctx = canvasBadge.getContext('2d');
-    ctx.fillStyle = '#1a73e8'; ctx.fillRect(0, 0, 256, 128);
-    ctx.fillStyle = '#ffffff'; ctx.font = '24px Arial'; ctx.textAlign = 'center';
-    ctx.fillText('Electronics Lab', 128, 70);
+    // Dynamic Waypoint Data Configuration based on uploaded images
+    const waypoints = [
+      {
+        title: "Step 1: Start Point",
+        sub: "Walk 2 meters & Turn Right",
+        icon: "↗️",
+        instruction: "Walk 2m straight, then TURN RIGHT",
+        img: "1000395810.jpg",
+        rotation: Math.PI / 4 // Angled to Right
+      },
+      {
+        title: "Step 2: Corridor",
+        sub: "Walk 12 meters straight",
+        icon: "⬆️",
+        instruction: "Walk 12m along Corridor, then TURN LEFT",
+        img: "1000395809.jpg",
+        rotation: 0 // Straight ahead
+      },
+      {
+        title: "Step 3: Electronics Lab Way",
+        sub: "Walk 7 meters straight",
+        icon: "↖️",
+        instruction: "Walk 7m straight, then TURN LEFT for Lab Entrance",
+        img: "1000395808.jpg",
+        rotation: -Math.PI / 4 // Angled to Left
+      },
+      {
+        title: "Step 4: Electronics Lab",
+        sub: "You have arrived at your destination!",
+        icon: "📍",
+        instruction: "ARRIVED: Electronics Lab Entrance",
+        img: "1000396488.jpg",
+        rotation: 0
+      }
+    ];
 
-    const texture = new THREE.CanvasTexture(canvasBadge);
-    const badgeMat = new THREE.MeshBasicMaterial({ map: texture });
-    const badgeGeo = new THREE.PlaneGeometry(1.2, 0.6);
-    const badge = new THREE.Mesh(badgeGeo, badgeMat);
-    badge.position.set(0, 0.2, -5.0);
-    pathGroup.add(badge);
+    let currentStep = 0;
 
-    // Compass Orientation
+    function updateNavigation() {
+      const wp = waypoints[currentStep];
+      document.getElementById('card-title').innerText = wp.title;
+      document.getElementById('card-sub').innerText = wp.sub;
+      document.getElementById('turn-icon').innerText = wp.icon;
+      document.getElementById('turn-text').innerText = wp.instruction;
+      document.getElementById('floor-img').src = wp.img;
+
+      // Rotate AR arrows toward turn direction
+      pathGroup.rotation.y = wp.rotation;
+    }
+
+    function nextStep() {
+      if (currentStep < waypoints.length - 1) {
+        currentStep++;
+        updateNavigation();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        updateNavigation();
+      }
+    }
+
+    // Compass Sensor Dynamic Bearing
     window.addEventListener('deviceorientation', (event) => {
-      if (event.alpha !== null) {
+      if (event.alpha !== null && currentStep === 1) { // Apply compass on corridor walk
         let alpha = event.alpha;
         pathGroup.rotation.y = THREE.MathUtils.degToRad(-alpha);
       }
@@ -191,7 +225,6 @@
         arr.position.z = zPos;
       });
 
-      badge.position.y = 0.2 + Math.sin(t * 2) * 0.08;
       renderer.render(scene, camera);
     }
     animate();
@@ -202,48 +235,8 @@
       camera.updateProjectionMatrix();
     });
 
-    // Dynamic Turn Instructions per Location
-    function changeTarget() {
-      const dest = document.getElementById('destination').value;
-      const pin = document.getElementById('target-pin');
-      const title = document.getElementById('card-title');
-      const cardSub = document.getElementById('card-sub');
-      const img = document.getElementById('floor-plan-img');
-      const turnIcon = document.getElementById('turn-icon');
-      const turnText = document.getElementById('turn-text');
-
-      if (dest === 'electronics_lab') {
-        title.innerText = "Electronics Lab"; pin.innerText = "Electronics Lab";
-        cardSub.innerText = "Turn Right in 5m • AR Live Route";
-        turnIcon.innerText = "↗️";
-        turnText.innerText = "In 5 meters, Turn Right to Electronics Lab";
-        img.src = "IMG_20260907_124812.jpg";
-        pathGroup.rotation.y = Math.PI / 6; // Angle towards right
-      } else if (dest === 'spot_2') {
-        title.innerText = "CPPS Corridor / Way"; pin.innerText = "Corridor";
-        cardSub.innerText = "Head Straight through Corridor";
-        turnIcon.innerText = "⬆️";
-        turnText.innerText = "Head Straight along the Corridor";
-        img.src = "IMG_20260907_124840.jpg";
-        pathGroup.rotation.y = 0;
-      } else if (dest === 'spot_3') {
-        title.innerText = "Main Reception / Entry"; pin.innerText = "Reception";
-        cardSub.innerText = "Turn Left at the end of hallway";
-        turnIcon.innerText = "↖️";
-        turnText.innerText = "In 8 meters, Turn Left for Main Reception";
-        img.src = "IMG_20260907_124852.jpg";
-        pathGroup.rotation.y = -Math.PI / 6; // Angle towards left
-      } else if (dest === 'spot_4') {
-        title.innerText = "CPPS Main Floor"; pin.innerText = "Main Floor";
-        cardSub.innerText = "Destination Ahead in 10m";
-        turnIcon.innerText = "📍";
-        turnText.innerText = "Continue Straight to CPPS Main Floor";
-        img.src = "IMG_20260910_081343.jpg";
-        pathGroup.rotation.y = 0;
-      }
-    }
+    updateNavigation();
   </script>
 </body>
 </html>
 
-Suggestions updated
