@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>AR Navigation</title>
+  <title>AR Indoor Navigation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
@@ -9,85 +9,101 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { overflow: hidden; font-family: sans-serif; background: #000; color: #fff; }
 
-    #qr-container {
-      position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
-      background: #111; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    #top-nav {
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; z-index: 10; width: 95%; max-width: 400px;
     }
-    #reader { width: 85%; max-width: 380px; }
+    select, button {
+      padding: 10px; border-radius: 6px; border: none; font-weight: bold; font-size: 14px;
+    }
+    select { flex: 1; background: #00bcd4; color: #fff; }
+    .btn-blue { background: #1a237e; color: #fff; }
 
-    #ar-view { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: none; }
+    #main-view { position: relative; width: 100vw; height: 100vh; }
     video { width: 100%; height: 100%; object-fit: cover; }
     #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-    #nav-bar {
-      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 10px; z-index: 5; width: 90%; max-width: 400px;
+    #qr-overlay {
+      position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+      width: 260px; z-index: 8; border: 2px solid #00bcd4; border-radius: 8px; background: rgba(0,0,0,0.5);
     }
-    select, button {
-      padding: 10px; border-radius: 8px; border: none; font-weight: bold; background: #00bcd4; color: #fff;
-    }
-    select { flex: 1; }
 
     #minimap-container {
-      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-      width: 180px; height: 110px; background: #fff; border: 2px solid #000; z-index: 5;
+      position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
+      width: 200px; height: 80px; background: #fff; border: 2px solid #000; z-index: 10;
     }
     #minimap-canvas { width: 100%; height: 100%; }
+
+    #popup {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: #fff; color: #000; padding: 20px; border-radius: 10px;
+      text-align: center; display: none; z-index: 20; box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+    }
+    #popup button { margin: 10px 5px 0 5px; background: #00bcd4; color: #fff; }
   </style>
 </head>
 <body>
 
-  <div id="qr-container">
-    <h3 style="margin-bottom:15px;">Scan HR Office QR Code</h3>
-    <div id="reader"></div>
-  </div>
-
-  <div id="ar-view">
-    <div id="nav-bar">
-      <select id="dest-select" onchange="startNav()">
+  <div id="main-view">
+    <div id="top-nav">
+      <select id="destination-select" onchange="selectDestination()">
+        <option value="">Select Destination</option>
+        <option value="HR_OFFICE">HR Office</option>
         <option value="ELECTRONICS_LAB">Electronics Lab</option>
+        <option value="ROOM_128">Room 128</option>
       </select>
-      <button onclick="location.reload()">Reset</button>
+      <button class="btn-blue" onclick="location.reload()">← Back</button>
+      <button class="btn-blue" onclick="clearNav()">Clear Navigation</button>
     </div>
 
     <video id="webcam" autoplay playsinline muted></video>
     <canvas id="ar-canvas"></canvas>
 
+    <div id="qr-overlay">
+      <div id="reader"></div>
+    </div>
+
     <div id="minimap-container">
       <img id="map-img" src="IMG_20260917_094427.png" style="display:none;" crossorigin="anonymous">
       <canvas id="minimap-canvas"></canvas>
     </div>
+
+    <div id="popup">
+      <p style="font-weight:bold;">You have reached to your destination.</p>
+      <button onclick="location.reload()">Home</button>
+      <button onclick="location.reload()">Exit</button>
+    </div>
   </div>
 
   <script>
-    let html5QrCode, scene, camera, renderer, arrowGroup;
+    let html5QrCode;
+    let scene, camera, renderer, arrowGroup, pinMesh;
     let stepCount = 0, userProgress = 0, navActive = false;
 
-    function startScanner() {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+      .then(stream => {
+        document.getElementById('webcam').srcObject = stream;
+        initScanner();
+        initAR();
+      })
+      .catch(err => alert("Camera permission required!"));
+
+    function initScanner() {
       html5QrCode = new Html5Qrcode("reader");
       html5QrCode.start(
         { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
+        { fps: 10, qrbox: 200 },
         (decodedText) => {
-          html5QrCode.stop().then(() => {
-            document.getElementById('qr-container').style.display = 'none';
-            document.getElementById('ar-view').style.display = 'block';
-            initAR();
-            startNav();
-          });
+          document.getElementById('qr-overlay').style.display = 'none';
+          html5QrCode.stop();
         },
         () => {}
       );
     }
-    startScanner();
 
     function initAR() {
-      const video = document.getElementById('webcam');
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-        .then(stream => { video.srcObject = stream; });
-
-      const canvas = document.getElementById('ar-canvas');
-      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      const arCanvas = document.getElementById('ar-canvas');
+      renderer = new THREE.WebGLRenderer({ canvas: arCanvas, alpha: true, antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
 
       scene = new THREE.Scene();
@@ -97,7 +113,7 @@
       arrowGroup = new THREE.Group();
       scene.add(arrowGroup);
 
-      // Create Cyan AR Arrows
+      // Cyan Arrows facing FORWARD direction
       for (let i = 0; i < 6; i++) {
         const shape = new THREE.Shape();
         shape.moveTo(0, 0.3);
@@ -112,18 +128,42 @@
         const geom = new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
         const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
         const arrow = new THREE.Mesh(geom, mat);
+        
+        // Correct facing angle towards forward path
         arrow.rotation.x = Math.PI / 2;
-        arrow.position.set(0, -0.8, -1.2 * (i + 1));
+        arrow.rotation.z = Math.PI; 
+        arrow.position.set(0, -0.6, -1.2 * (i + 1));
         arrowGroup.add(arrow);
       }
+
+      const pinGeom = new THREE.ConeGeometry(0.35, 0.9, 16);
+      const pinMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+      pinMesh = new THREE.Mesh(pinGeom, pinMat);
+      pinMesh.rotation.x = Math.PI;
+      pinMesh.position.set(0, 0, -7.5);
+      pinMesh.visible = false;
+      scene.add(pinMesh);
 
       animate();
     }
 
-    function startNav() {
+    function selectDestination() {
+      const val = document.getElementById('destination-select').value;
+      if (!val) return;
       navActive = true;
       stepCount = 0;
       userProgress = 0;
+      pinMesh.visible = false;
+      document.getElementById('popup').style.display = 'none';
+      document.getElementById('qr-overlay').style.display = 'none';
+    }
+
+    function clearNav() {
+      navActive = false;
+      userProgress = 0;
+      pinMesh.visible = false;
+      document.getElementById('destination-select').value = "";
+      document.getElementById('popup').style.display = 'none';
     }
 
     window.addEventListener('devicemotion', (e) => {
@@ -133,7 +173,11 @@
       let mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
       if (mag > 12.0) {
         stepCount++;
-        userProgress = Math.min(1.0, stepCount / 15);
+        userProgress = Math.min(1.0, stepCount / 18);
+        if (userProgress >= 1.0) {
+          pinMesh.visible = true;
+          document.getElementById('popup').style.display = 'block';
+        }
       }
     });
 
@@ -150,22 +194,24 @@
         mapCtx.drawImage(mapImg, 0, 0, minimapCanvas.width, minimapCanvas.height);
       }
 
-      let startX = 0.69 * minimapCanvas.width, startY = 0.82 * minimapCanvas.height;
-      let endX = 0.77 * minimapCanvas.width, endY = 0.76 * minimapCanvas.height;
+      let startX = 20, startY = 60;
+      let endX = 160, endY = 20;
 
       let currX = startX + (endX - startX) * userProgress;
       let currY = startY + (endY - startY) * userProgress;
 
-      mapCtx.strokeStyle = '#00e5ff';
-      mapCtx.lineWidth = 3;
-      mapCtx.beginPath();
-      mapCtx.moveTo(startX, startY);
-      mapCtx.lineTo(endX, endY);
-      mapCtx.stroke();
+      if (navActive) {
+        mapCtx.strokeStyle = '#00e5ff';
+        mapCtx.lineWidth = 3;
+        mapCtx.beginPath();
+        mapCtx.moveTo(startX, startY);
+        mapCtx.lineTo(endX, endY);
+        mapCtx.stroke();
+      }
 
       mapCtx.fillStyle = '#0000ff';
       mapCtx.beginPath();
-      mapCtx.arc(currX, currY, 4, 0, Math.PI * 2);
+      mapCtx.arc(currX, currY, 5, 0, Math.PI * 2);
       mapCtx.fill();
     }
 
@@ -173,8 +219,9 @@
       requestAnimationFrame(animate);
       if (navActive && arrowGroup) {
         arrowGroup.children.forEach((arrow) => {
-          arrow.position.z += 0.01;
-          if (arrow.position.z > 0) arrow.position.z = -7.2;
+          // Moves FORWARD away from user camera
+          arrow.position.z -= 0.015;
+          if (arrow.position.z < -7.2) arrow.position.z = -1.2;
         });
       }
       drawMinimap();
