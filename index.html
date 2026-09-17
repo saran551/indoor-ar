@@ -61,7 +61,7 @@
 
   <div id="top-banner">
     <span id="nav-icon">⬆️</span>
-    <span id="nav-text">Enter via Left Main Gate towards Electronics Lab</span>
+    <span id="nav-text">Start at HR Office -> Electronics Lab</span>
   </div>
 
   <div id="camera-container">
@@ -71,14 +71,14 @@
 
   <div id="map-container">
     <div id="map-wrapper">
-      <img id="factory-map-img" src="IMG_20260917_093301.png" alt="Ashok Leyland Cab Panel Press Shop" crossorigin="anonymous">
+      <img id="factory-map-img" src="IMG_20260917_094427.png" alt="Ashok Leyland Cab Panel Press Shop" crossorigin="anonymous">
       <canvas id="blueprint-canvas"></canvas>
     </div>
     
     <div id="info-card">
       <div>
         <h3 id="target-title">Target: Electronics Lab</h3>
-        <p id="target-sub">Live Path Navigation Active</p>
+        <p id="target-sub">Route from HR Office Active</p>
       </div>
       <button class="sim-btn" onclick="simulateStep()">Step Test 🚶‍♂️</button>
     </div>
@@ -114,8 +114,9 @@
       pathNodes.push(node);
     }
 
-    // 3. Layout Map Canvas Setup & Coordinates from Left Main Gate
+    // 3. Layout Map Overlay Setup (HR Office -> Electronics Lab Path)
     const mapCanvas = document.getElementById('blueprint-canvas');
+    mapCanvas.style.willReadFrequently = true;
     const mapCtx = mapCanvas.getContext('2d');
     const imgEl = document.getElementById('factory-map-img');
 
@@ -125,12 +126,12 @@
     }
     resizeMap();
 
-    // Corrected Path: Start from Left Side Main Gate -> Red Arrow Route
+    // Exact Coordinates mapped to the Red Arrows (HR Office to Electronics Lab)
     const rawPathPoints = [
-      { x: 0.10, y: 0.52 }, // Start: Left Side Main Gate
-      { x: 0.14, y: 0.52 }, // Enter Corridor & Turn Right
-      { x: 0.14, y: 0.63 }, // Downward Corridor Walk
-      { x: 0.16, y: 0.63 } // Turn Left into Electronics Lab Area
+      { x: 0.690, y: 0.820 }, // HR Office Entrance
+      { x: 0.730, y: 0.820 }, // Step into Corridor
+      { x: 0.730, y: 0.760 }, // Walk along Main Corridor
+      { x: 0.770, y: 0.760 } // Enter Electronics Lab
     ];
 
     let userProgress = 0;
@@ -170,7 +171,7 @@
         y: bounds.offsetY + p.y * bounds.renderH
       }));
 
-      // Highlight Navigation Route in Bright Red
+      // Red Route Line Overlay
       mapCtx.strokeStyle = '#ff1744';
       mapCtx.lineWidth = 4;
       mapCtx.lineCap = 'round';
@@ -183,14 +184,14 @@
       }
       mapCtx.stroke();
 
-      // Target Location Pin
+      // Destination Target Pin
       let targetPt = screenPoints[screenPoints.length - 1];
       mapCtx.fillStyle = '#d50000';
       mapCtx.beginPath();
       mapCtx.arc(targetPt.x, targetPt.y, 6, 0, Math.PI * 2);
       mapCtx.fill();
 
-      // Moving Blue Dot Position Calculation
+      // Live Moving Blue Dot
       let segCount = screenPoints.length - 1;
       let totalProg = userProgress * segCount;
       let segIndex = Math.min(Math.floor(totalProg), segCount - 1);
@@ -202,35 +203,35 @@
       let currX = (1 - segProg) * p1.x + segProg * p2.x;
       let currY = (1 - segProg) * p1.y + segProg * p2.y;
 
-      // Outer Pulsing Glow
+      // Glow Ring
       mapCtx.fillStyle = 'rgba(13, 71, 161, 0.4)';
       mapCtx.beginPath();
-      mapCtx.arc(currX, currY, 14, 0, Math.PI * 2);
+      mapCtx.arc(currX, currY, 13, 0, Math.PI * 2);
       mapCtx.fill();
 
-      // Live Solid Blue Dot
+      // Solid Blue Dot
       mapCtx.fillStyle = '#29b6f6';
       mapCtx.strokeStyle = '#ffffff';
       mapCtx.lineWidth = 3;
       mapCtx.beginPath();
-      mapCtx.arc(currX, currY, 7, 0, Math.PI * 2);
+      mapCtx.arc(currX, currY, 6, 0, Math.PI * 2);
       mapCtx.fill();
       mapCtx.stroke();
     }
 
-    // 4. Motion Sensing & Step Navigation
+    // 4. Step Tracking & Direction Updates
     let stepCount = 0;
     let lastAccel = 0;
 
     function advanceProgress() {
       stepCount++;
-      userProgress = Math.min(1.0, stepCount / 18);
+      userProgress = Math.min(1.0, stepCount / 15);
 
       if (userProgress < 0.25) {
-        document.getElementById('nav-text').innerText = "Walk straight from Left Gate";
+        document.getElementById('nav-text').innerText = "Exit HR Office into Corridor";
         document.getElementById('nav-icon').innerText = "➡️";
-      } else if (userProgress < 0.70) {
-        document.getElementById('nav-text').innerText = "Turn Right down the Corridor";
+      } else if (userProgress < 0.75) {
+        document.getElementById('nav-text').innerText = "Turn Right & Walk Down Corridor";
         document.getElementById('nav-icon').innerText = "⬇️";
       } else if (userProgress < 0.95) {
         document.getElementById('nav-text').innerText = "Turn Left into Electronics Lab";
