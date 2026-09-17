@@ -1,289 +1,217 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Ashok Leyland AR Indoor Navigation</title>
+  <title>AR Indoor Navigation</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; color: #fff; }
+    body { overflow: hidden; font-family: sans-serif; background: #000; color: #fff; }
 
-    /* AR View Top Screen */
-    #camera-container {
-      position: absolute; top: 0; left: 0; width: 100%; height: 40vh; z-index: 1; overflow: hidden;
+    #qr-scanner-container {
+      position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #000; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
+    #reader { width: 90%; max-width: 400px; }
+
+    #ar-view { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: none; }
     video { width: 100%; height: 100%; object-fit: cover; }
-    #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
+    #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-    /* Top Instruction Banner */
-    #top-banner {
-      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; background: #0d47a1; color: white; padding: 8px 16px;
-      border-radius: 20px; display: flex; align-items: center; gap: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5); font-weight: bold; font-size: 12px; width: 92%; max-width: 380px;
+    #top-nav {
+      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 10px; z-index: 5; width: 90%; max-width: 400px;
     }
+    select, button {
+      padding: 10px; border-radius: 8px; border: none; font-weight: bold; background: #00bcd4; color: #fff;
+    }
+    select { flex: 1; background: #00bcd4; color: #fff; }
+    .btn-back { background: #1a237e; }
 
-    /* Bottom Full Layout Map Screen */
-    #map-container {
-      position: absolute; bottom: 0; left: 0; width: 100%; height: 60vh;
-      background: #1e1e1e; z-index: 9999; border-top-left-radius: 18px;
-      border-top-right-radius: 18px; overflow: hidden; display: flex; flex-direction: column;
+    #minimap-container {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      width: 180px; height: 120px; background: #fff; border: 2px solid #000; z-index: 5;
     }
+    #minimap-canvas { width: 100%; height: 100%; }
 
-    #map-wrapper {
-      position: relative; width: 100%; height: 83%; background: #ffffff;
-      display: flex; justify-content: center; align-items: center; overflow: hidden;
+    #popup {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: #fff; color: #000; padding: 20px; border-radius: 12px;
+      text-align: center; display: none; z-index: 20; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
-
-    #factory-map-img {
-      position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 1; display: block;
-    }
-
-    #blueprint-canvas {
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none;
-    }
-
-    #info-card {
-      height: 17%; background: #ffffff; border-top: 1px solid #e0e0e0;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 16px; color: #202124; z-index: 3;
-    }
-    .info-card h3 { font-size: 13px; color: #0d47a1; font-weight: 700; }
-    .info-card p { font-size: 11px; color: #5f6368; }
-
-    .sim-btn {
-      background: #0d47a1; color: #fff; border: none; padding: 6px 12px;
-      border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer;
-    }
+    #popup button { margin: 10px 5px 0 5px; background: #00bcd4; }
   </style>
 </head>
 <body>
 
-  <div id="top-banner">
-    <span id="nav-icon">⬆️</span>
-    <span id="nav-text">Start at HR Office -> Electronics Lab</span>
+  <div id="qr-scanner-container">
+    <h2 style="margin-bottom:20px;">Scan QR Code</h2>
+    <div id="reader"></div>
   </div>
 
-  <div id="camera-container">
+  <div id="ar-view">
+    <div id="top-nav">
+      <select id="destination-select" onchange="startNavigation()">
+        <option value="">Select Destination</option>
+        <option value="electronics_lab">Electronics Lab</option>
+        <option value="room_128">Room 128</option>
+      </select>
+      <button class="btn-back" onclick="resetApp()">← Back</button>
+    </div>
+
     <video id="webcam" autoplay playsinline muted></video>
     <canvas id="ar-canvas"></canvas>
-  </div>
 
-  <div id="map-container">
-    <div id="map-wrapper">
-      <img id="factory-map-img" src="IMG_20260917_094427.png" alt="Ashok Leyland Cab Panel Press Shop" crossorigin="anonymous">
-      <canvas id="blueprint-canvas"></canvas>
+    <div id="minimap-container">
+      <img id="map-img" src="IMG_20260917_094427.png" style="display:none;" crossorigin="anonymous">
+      <canvas id="minimap-canvas"></canvas>
     </div>
-    
-    <div id="info-card">
-      <div>
-        <h3 id="target-title">Target: Electronics Lab</h3>
-        <p id="target-sub">Route from HR Office Active</p>
-      </div>
-      <button class="sim-btn" onclick="simulateStep()">Step Test 🚶‍♂️</button>
+
+    <div id="popup">
+      <h3>You have reached your destination.</h3>
+      <button onclick="resetApp()">Home</button>
+      <button onclick="resetApp()">Exit</button>
     </div>
   </div>
 
   <script>
-    // 1. Camera Initialization
-    const video = document.getElementById('webcam');
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => console.error("Camera Error:", err));
-
-    // 2. AR View Setup (Three.js)
-    const arCanvas = document.getElementById('ar-canvas');
-    const renderer = new THREE.WebGLRenderer({ canvas: arCanvas, alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight * 0.40);
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / (window.innerHeight * 0.40), 0.1, 1000);
-    camera.position.set(0, 1.2, 0);
-
-    const pathGroup = new THREE.Group();
-    scene.add(pathGroup);
-
-    const pathNodes = [];
-    const nodeGeo = new THREE.SphereGeometry(0.08, 16, 16);
-    const nodeMat = new THREE.MeshBasicMaterial({ color: 0x0d47a1 });
-
-    for (let i = 0; i < 8; i++) {
-      const node = new THREE.Mesh(nodeGeo, nodeMat);
-      node.position.set(0, -0.4, -0.8 * (i + 1));
-      pathGroup.add(node);
-      pathNodes.push(node);
-    }
-
-    // 3. Layout Map Overlay Setup (HR Office -> Electronics Lab Path)
-    const mapCanvas = document.getElementById('blueprint-canvas');
-    mapCanvas.style.willReadFrequently = true;
-    const mapCtx = mapCanvas.getContext('2d');
-    const imgEl = document.getElementById('factory-map-img');
-
-    function resizeMap() {
-      mapCanvas.width = mapCanvas.clientWidth;
-      mapCanvas.height = mapCanvas.clientHeight;
-    }
-    resizeMap();
-
-    // Exact Coordinates mapped to the Red Arrows (HR Office to Electronics Lab)
-    const rawPathPoints = [
-      { x: 0.690, y: 0.820 }, // HR Office Entrance
-      { x: 0.730, y: 0.820 }, // Step into Corridor
-      { x: 0.730, y: 0.760 }, // Walk along Main Corridor
-      { x: 0.770, y: 0.760 } // Enter Electronics Lab
-    ];
-
-    let userProgress = 0;
-
-    function getRenderedImgBounds() {
-      const cw = mapCanvas.width;
-      const ch = mapCanvas.height;
-      const iw = imgEl.naturalWidth || cw;
-      const ih = imgEl.naturalHeight || ch;
-
-      const imgAspect = iw / ih;
-      const canvasAspect = cw / ch;
-
-      let renderW, renderH, offsetX, offsetY;
-
-      if (canvasAspect > imgAspect) {
-        renderH = ch;
-        renderW = ch * imgAspect;
-        offsetX = (cw - renderW) / 2;
-        offsetY = 0;
-      } else {
-        renderW = cw;
-        renderH = cw / imgAspect;
-        offsetX = 0;
-        offsetY = (ch - renderH) / 2;
-      }
-
-      return { renderW, renderH, offsetX, offsetY };
-    }
-
-    function drawBlueprintOverlay() {
-      mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
-      const bounds = getRenderedImgBounds();
-
-      const screenPoints = rawPathPoints.map(p => ({
-        x: bounds.offsetX + p.x * bounds.renderW,
-        y: bounds.offsetY + p.y * bounds.renderH
-      }));
-
-      // Red Route Line Overlay
-      mapCtx.strokeStyle = '#ff1744';
-      mapCtx.lineWidth = 4;
-      mapCtx.lineCap = 'round';
-      mapCtx.lineJoin = 'round';
-      
-      mapCtx.beginPath();
-      mapCtx.moveTo(screenPoints[0].x, screenPoints[0].y);
-      for (let i = 1; i < screenPoints.length; i++) {
-        mapCtx.lineTo(screenPoints[i].x, screenPoints[i].y);
-      }
-      mapCtx.stroke();
-
-      // Destination Target Pin
-      let targetPt = screenPoints[screenPoints.length - 1];
-      mapCtx.fillStyle = '#d50000';
-      mapCtx.beginPath();
-      mapCtx.arc(targetPt.x, targetPt.y, 6, 0, Math.PI * 2);
-      mapCtx.fill();
-
-      // Live Moving Blue Dot
-      let segCount = screenPoints.length - 1;
-      let totalProg = userProgress * segCount;
-      let segIndex = Math.min(Math.floor(totalProg), segCount - 1);
-      let segProg = totalProg - segIndex;
-
-      let p1 = screenPoints[segIndex];
-      let p2 = screenPoints[segIndex + 1];
-
-      let currX = (1 - segProg) * p1.x + segProg * p2.x;
-      let currY = (1 - segProg) * p1.y + segProg * p2.y;
-
-      // Glow Ring
-      mapCtx.fillStyle = 'rgba(13, 71, 161, 0.4)';
-      mapCtx.beginPath();
-      mapCtx.arc(currX, currY, 13, 0, Math.PI * 2);
-      mapCtx.fill();
-
-      // Solid Blue Dot
-      mapCtx.fillStyle = '#29b6f6';
-      mapCtx.strokeStyle = '#ffffff';
-      mapCtx.lineWidth = 3;
-      mapCtx.beginPath();
-      mapCtx.arc(currX, currY, 6, 0, Math.PI * 2);
-      mapCtx.fill();
-      mapCtx.stroke();
-    }
-
-    // 4. Step Tracking & Direction Updates
+    let scanner;
+    let scene, camera, renderer, arrowGroup, pinMesh;
     let stepCount = 0;
-    let lastAccel = 0;
+    let userProgress = 0;
+    let navActive = false;
 
-    function advanceProgress() {
-      stepCount++;
-      userProgress = Math.min(1.0, stepCount / 15);
+    function initQRScanner() {
+      scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
+      scanner.render((decodedText) => {
+        scanner.clear();
+        document.getElementById('qr-scanner-container').style.display = 'none';
+        document.getElementById('ar-view').style.display = 'block';
+        initAR();
+      });
+    }
+    initQRScanner();
 
-      if (userProgress < 0.25) {
-        document.getElementById('nav-text').innerText = "Exit HR Office into Corridor";
-        document.getElementById('nav-icon').innerText = "➡️";
-      } else if (userProgress < 0.75) {
-        document.getElementById('nav-text').innerText = "Turn Right & Walk Down Corridor";
-        document.getElementById('nav-icon').innerText = "⬇️";
-      } else if (userProgress < 0.95) {
-        document.getElementById('nav-text').innerText = "Turn Left into Electronics Lab";
-        document.getElementById('nav-icon').innerText = "⬅️";
-      } else {
-        document.getElementById('nav-text').innerText = "Arrived at Electronics Lab!";
-        document.getElementById('nav-icon').innerText = "📍";
-        document.getElementById('target-sub').innerText = "Destination Reached 🎉";
+    function initAR() {
+      const video = document.getElementById('webcam');
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => { video.srcObject = stream; });
+
+      const arCanvas = document.getElementById('ar-canvas');
+      renderer = new THREE.WebGLRenderer({ canvas: arCanvas, alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 1.2, 0);
+
+      arrowGroup = new THREE.Group();
+      scene.add(arrowGroup);
+
+      // Create Cyan 3D Arrows
+      for (let i = 0; i < 6; i++) {
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0.3);
+        shape.lineTo(-0.2, -0.2);
+        shape.lineTo(-0.08, -0.2);
+        shape.lineTo(-0.08, -0.5);
+        shape.lineTo(0.08, -0.5);
+        shape.lineTo(0.08, -0.2);
+        shape.lineTo(0.2, -0.2);
+        shape.closePath();
+
+        const geom = new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
+        const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide });
+        const arrow = new THREE.Mesh(geom, mat);
+        arrow.rotation.x = Math.PI / 2;
+        arrow.position.set(0, -0.8, -1.2 * (i + 1));
+        arrowGroup.add(arrow);
       }
+
+      // Create Floating Destination Red Pin
+      const pinGeom = new THREE.ConeGeometry(0.3, 0.8, 16);
+      const pinMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
+      pinMesh = new THREE.Mesh(pinGeom, pinMat);
+      pinMesh.rotation.x = Math.PI;
+      pinMesh.position.set(0, 0, -8);
+      pinMesh.visible = false;
+      scene.add(pinMesh);
+
+      animate();
     }
 
-    function simulateStep() {
-      advanceProgress();
+    function startNavigation() {
+      const target = document.getElementById('destination-select').value;
+      if (!target) return;
+      navActive = true;
+      stepCount = 0;
+      userProgress = 0;
+      document.getElementById('popup').style.display = 'none';
+      pinMesh.visible = false;
     }
 
     window.addEventListener('devicemotion', (e) => {
+      if (!navActive) return;
       let acc = e.accelerationIncludingGravity;
       if (!acc) return;
-
       let mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-
-      if (mag > 12.0 && (Date.now() - lastAccel > 450)) {
-        lastAccel = Date.now();
-        advanceProgress();
+      if (mag > 12.0) {
+        stepCount++;
+        userProgress = Math.min(1.0, stepCount / 20);
+        if (userProgress >= 1.0) {
+          pinMesh.visible = true;
+          document.getElementById('popup').style.display = 'block';
+        }
       }
     });
 
-    imgEl.onload = () => {
-      resizeMap();
-      drawBlueprintOverlay();
-    };
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const mapCtx = minimapCanvas.getContext('2d');
+    const mapImg = document.getElementById('map-img');
 
-    let clock = new THREE.Clock();
+    function drawMinimap() {
+      minimapCanvas.width = minimapCanvas.clientWidth;
+      minimapCanvas.height = minimapCanvas.clientHeight;
+      mapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+      
+      if (mapImg.complete && mapImg.naturalWidth !== 0) {
+        mapCtx.drawImage(mapImg, 0, 0, minimapCanvas.width, minimapCanvas.height);
+      }
+
+      let startX = 30, startY = 100;
+      let endX = 140, endY = 30;
+      let currX = startX + (endX - startX) * userProgress;
+      let currY = startY + (endY - startY) * userProgress;
+
+      mapCtx.strokeStyle = '#00e5ff';
+      mapCtx.lineWidth = 3;
+      mapCtx.beginPath();
+      mapCtx.moveTo(startX, startY);
+      mapCtx.lineTo(endX, endY);
+      mapCtx.stroke();
+
+      mapCtx.fillStyle = '#0000ff';
+      mapCtx.beginPath();
+      mapCtx.arc(currX, currY, 5, 0, Math.PI * 2);
+      mapCtx.fill();
+    }
+
     function animate() {
       requestAnimationFrame(animate);
-      let t = clock.getElapsedTime();
-
-      pathNodes.forEach((node, i) => {
-        node.position.y = -0.4 + Math.sin(t * 4 + i * 0.4) * 0.04;
-      });
-
-      drawBlueprintOverlay();
+      if (navActive && arrowGroup) {
+        arrowGroup.children.forEach((arrow, i) => {
+          arrow.position.z += 0.01;
+          if (arrow.position.z > 0) arrow.position.z = -7.2;
+        });
+      }
+      drawMinimap();
       renderer.render(scene, camera);
     }
-    animate();
 
-    window.addEventListener('resize', () => {
-      renderer.setSize(window.innerWidth, window.innerHeight * 0.40);
-      camera.aspect = window.innerWidth / (window.innerHeight * 0.40);
-      camera.updateProjectionMatrix();
-      resizeMap();
-    });
+    function resetApp() {
+      location.reload();
+    }
   </script>
 </body>
 </html>
