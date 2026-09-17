@@ -8,36 +8,35 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #000; color: #fff; }
 
-    /* Top Camera AR View */
+    /* Top AR View Container */
     #camera-container {
-      position: absolute; top: 0; left: 0; width: 100%; height: 50vh; z-index: 1; overflow: hidden;
+      position: absolute; top: 0; left: 0; width: 100%; height: 42vh; z-index: 1; overflow: hidden;
     }
     video { width: 100%; height: 100%; object-fit: cover; }
     #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; pointer-events: none; }
 
-    /* Google Live View Navigation Banner */
+    /* Top Instruction Banner */
     #top-banner {
-      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; background: #1a73e8; color: white; padding: 10px 18px;
-      border-radius: 25px; display: flex; align-items: center; gap: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-weight: bold; font-size: 13px; width: 90%; max-width: 380px;
+      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; background: #1a73e8; color: white; padding: 8px 16px;
+      border-radius: 20px; display: flex; align-items: center; gap: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-weight: bold; font-size: 12px; width: 92%; max-width: 380px;
     }
 
-    /* Bottom 2D Blueprint Map View */
+    /* Bottom Full Map Area */
     #map-container {
-      position: absolute; bottom: 0; left: 0; width: 100%; height: 50vh;
-      background: #111; z-index: 9999; border-top-left-radius: 20px;
-      border-top-right-radius: 20px; overflow: hidden;
-      box-shadow: 0 -4px 20px rgba(0,0,0,0.3); display: flex; flex-direction: column;
+      position: absolute; bottom: 0; left: 0; width: 100%; height: 58vh;
+      background: #121212; z-index: 9999; border-top-left-radius: 18px;
+      border-top-right-radius: 18px; overflow: hidden; display: flex; flex-direction: column;
     }
 
     #map-wrapper {
-      position: relative; width: 100%; height: 80%; background: #fff; display: flex;
-      justify-content: center; align-items: center; overflow: hidden;
+      position: relative; width: 100%; height: 82%; background: #ffffff;
+      display: flex; justify-content: center; align-items: center; overflow: hidden;
     }
 
     #factory-map-img {
-      position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 1;
+      position: absolute; width: 100%; height: 100%; object-fit: contain; z-index: 1; display: block;
     }
 
     #blueprint-canvas {
@@ -45,19 +44,24 @@
     }
 
     #info-card {
-      height: 20%; background: #ffffff; border-top: 1px solid #e0e0e0;
+      height: 18%; background: #ffffff; border-top: 1px solid #e0e0e0;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 18px; color: #202124; z-index: 3;
+      padding: 0 16px; color: #202124; z-index: 3;
     }
-    .info-card h3 { font-size: 15px; color: #1a73e8; font-weight: 700; }
+    .info-card h3 { font-size: 13px; color: #1a73e8; font-weight: 700; }
     .info-card p { font-size: 11px; color: #5f6368; }
+
+    .sim-btn {
+      background: #1a73e8; color: #fff; border: none; padding: 6px 12px;
+      border-radius: 6px; font-weight: bold; font-size: 11px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
   <div id="top-banner">
     <span id="nav-icon">⬆️</span>
-    <span id="nav-text">Walk straight from Entrance along Green Path</span>
+    <span id="nav-text">Walk straight along the Green Path</span>
   </div>
 
   <div id="camera-container">
@@ -67,38 +71,38 @@
 
   <div id="map-container">
     <div id="map-wrapper">
-      <img id="factory-map-img" src="1000396925.jpg" alt="Factory Blueprint">
+      <img id="factory-map-img" src="map.jpg" alt="Factory Blueprint" crossorigin="anonymous">
       <canvas id="blueprint-canvas"></canvas>
     </div>
     
     <div id="info-card">
       <div>
-        <h3 id="target-title">Target: Assembly Line / Panel Stores</h3>
-        <p id="target-sub">Live Tracking Active • Green Path Selected</p>
+        <h3 id="target-title">Target: Assembly Line</h3>
+        <p id="target-sub">Live Step Motion Tracking</p>
       </div>
+      <button class="sim-btn" onclick="simulateStep()">Step Test 🚶‍♂️</button>
     </div>
   </div>
 
   <script>
-    // 1. Live Camera Stream Setup
+    // 1. Camera Initialization
     const video = document.getElementById('webcam');
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => { video.srcObject = stream; })
       .catch(err => console.error("Camera Error:", err));
 
-    // 2. Three.js AR View Setup
+    // 2. AR 3D View Setup
     const arCanvas = document.getElementById('ar-canvas');
     const renderer = new THREE.WebGLRenderer({ canvas: arCanvas, alpha: true, antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight * 0.50);
+    renderer.setSize(window.innerWidth, window.innerHeight * 0.42);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / (window.innerHeight * 0.50), 0.1, 1000);
+    const camera = new THREE.PerspectiveCamera(60, window.innerWidth / (window.innerHeight * 0.42), 0.1, 1000);
     camera.position.set(0, 1.2, 0);
 
     const pathGroup = new THREE.Group();
     scene.add(pathGroup);
 
-    // Floating 3D AR Navigation Balls (Video Style)
     const pathNodes = [];
     const nodeGeo = new THREE.SphereGeometry(0.08, 16, 16);
     const nodeMat = new THREE.MeshBasicMaterial({ color: 0x1a73e8 });
@@ -110,9 +114,10 @@
       pathNodes.push(node);
     }
 
-    // 3. 2D Layout Map Canvas Tracking Overlay
+    // 3. Map & Moving Blue Dot Setup
     const mapCanvas = document.getElementById('blueprint-canvas');
     const mapCtx = mapCanvas.getContext('2d');
+    const imgEl = document.getElementById('factory-map-img');
 
     function resizeMap() {
       mapCanvas.width = mapCanvas.clientWidth;
@@ -120,54 +125,84 @@
     }
     resizeMap();
 
-    // Map Path Coordinates based on uploaded factory map image (Normalized 0.0 to 1.0)
-    const pathPoints = [
-      { x: 0.45, y: 0.77 }, // Red Circle Entrance (Office Building)
-      { x: 0.45, y: 0.69 }, // Turn Point 1
-      { x: 0.58, y: 0.69 }, // Main Corridor Green Line
-      { x: 0.58, y: 0.42 }, // Turn Point 2 (Line 1 Corridor)
-      { x: 0.58, y: 0.32 } // Target Point (Panel Stores / Assembly)
+    // Map Path Coordinates along Green Line
+    const rawPathPoints = [
+      { x: 0.50, y: 0.85 }, // Entrance
+      { x: 0.50, y: 0.70 }, // Turn 1
+      { x: 0.62, y: 0.70 }, // Turn 2 Corridor
+      { x: 0.62, y: 0.40 }, // Straight Corridor
+      { x: 0.62, y: 0.25 } // Destination
     ];
 
-    let userProgress = 0; // 0 to 1 progress ratio
+    let userProgress = 0;
+
+    function getRenderedImgBounds() {
+      const cw = mapCanvas.width;
+      const ch = mapCanvas.height;
+      const iw = imgEl.naturalWidth || cw;
+      const ih = imgEl.naturalHeight || ch;
+
+      const imgAspect = iw / ih;
+      const canvasAspect = cw / ch;
+
+      let renderW, renderH, offsetX, offsetY;
+
+      if (canvasAspect > imgAspect) {
+        renderH = ch;
+        renderW = ch * imgAspect;
+        offsetX = (cw - renderW) / 2;
+        offsetY = 0;
+      } else {
+        renderW = cw;
+        renderH = cw / imgAspect;
+        offsetX = 0;
+        offsetY = (ch - renderH) / 2;
+      }
+
+      return { renderW, renderH, offsetX, offsetY };
+    }
 
     function drawBlueprintOverlay() {
       mapCtx.clearRect(0, 0, mapCanvas.width, mapCanvas.height);
-      const w = mapCanvas.width;
-      const h = mapCanvas.height;
+      const bounds = getRenderedImgBounds();
 
-      // Draw Green Navigation Path Line
+      const screenPoints = rawPathPoints.map(p => ({
+        x: bounds.offsetX + p.x * bounds.renderW,
+        y: bounds.offsetY + p.y * bounds.renderH
+      }));
+
+      // Green Line Path
       mapCtx.strokeStyle = '#00e676';
-      mapCtx.lineWidth = 5;
+      mapCtx.lineWidth = 4;
       mapCtx.lineCap = 'round';
       mapCtx.lineJoin = 'round';
       
       mapCtx.beginPath();
-      mapCtx.moveTo(pathPoints[0].x * w, pathPoints[0].y * h);
-      for (let i = 1; i < pathPoints.length; i++) {
-        mapCtx.lineTo(pathPoints[i].x * w, pathPoints[i].y * h);
+      mapCtx.moveTo(screenPoints[0].x, screenPoints[0].y);
+      for (let i = 1; i < screenPoints.length; i++) {
+        mapCtx.lineTo(screenPoints[i].x, screenPoints[i].y);
       }
       mapCtx.stroke();
 
-      // Current Blue Dot Location Calculation along multi-segment path
-      let segCount = pathPoints.length - 1;
+      // Calculating Moving Blue Dot
+      let segCount = screenPoints.length - 1;
       let totalProg = userProgress * segCount;
       let segIndex = Math.min(Math.floor(totalProg), segCount - 1);
       let segProg = totalProg - segIndex;
 
-      let p1 = pathPoints[segIndex];
-      let p2 = pathPoints[segIndex + 1];
+      let p1 = screenPoints[segIndex];
+      let p2 = screenPoints[segIndex + 1];
 
-      let currX = ((1 - segProg) * p1.x + segProg * p2.x) * w;
-      let currY = ((1 - segProg) * p1.y + segProg * p2.y) * h;
+      let currX = (1 - segProg) * p1.x + segProg * p2.x;
+      let currY = (1 - segProg) * p1.y + segProg * p2.y;
 
-      // Outer Pulsing Circle
-      mapCtx.fillStyle = 'rgba(26, 115, 232, 0.3)';
+      // Pulse Glow
+      mapCtx.fillStyle = 'rgba(26, 115, 232, 0.35)';
       mapCtx.beginPath();
       mapCtx.arc(currX, currY, 14, 0, Math.PI * 2);
       mapCtx.fill();
 
-      // Solid Live Blue Dot
+      // Solid Moving Blue Dot
       mapCtx.fillStyle = '#1a73e8';
       mapCtx.strokeStyle = '#ffffff';
       mapCtx.lineWidth = 3;
@@ -177,9 +212,33 @@
       mapCtx.stroke();
     }
 
-    // 4. Motion Sensor Step Tracking
+    // 4. Motion Sensor for Step Movement
     let stepCount = 0;
     let lastAccel = 0;
+
+    function advanceProgress() {
+      stepCount++;
+      userProgress = Math.min(1.0, stepCount / 22);
+
+      if (userProgress < 0.25) {
+        document.getElementById('nav-text').innerText = "Walk straight along Green Path";
+        document.getElementById('nav-icon').innerText = "⬆️";
+      } else if (userProgress < 0.50) {
+        document.getElementById('nav-text').innerText = "Turn Right along Main Corridor";
+        document.getElementById('nav-icon').innerText = "↗️";
+      } else if (userProgress < 0.85) {
+        document.getElementById('nav-text').innerText = "Walk straight towards Target";
+        document.getElementById('nav-icon').innerText = "⬆️";
+      } else {
+        document.getElementById('nav-text').innerText = "Arrived at Destination!";
+        document.getElementById('nav-icon').innerText = "📍";
+        document.getElementById('target-sub').innerText = "Target Reached 🎉";
+      }
+    }
+
+    function simulateStep() {
+      advanceProgress();
+    }
 
     window.addEventListener('devicemotion', (e) => {
       let acc = e.accelerationIncludingGravity;
@@ -187,41 +246,17 @@
 
       let mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
 
-      if (mag > 12.2 && (Date.now() - lastAccel > 500)) {
+      if (mag > 12.0 && (Date.now() - lastAccel > 450)) {
         lastAccel = Date.now();
-        stepCount++;
-
-        // ~35 steps complete green path journey
-        userProgress = Math.min(1.0, stepCount / 35);
-
-        if (userProgress < 0.25) {
-          document.getElementById('nav-text').innerText = "Walk straight from Entrance along Green Path";
-          document.getElementById('nav-icon').innerText = "⬆️";
-          pathGroup.rotation.y = 0;
-        } else if (userProgress < 0.50) {
-          document.getElementById('nav-text').innerText = "Turn Right along Main Line Corridor";
-          document.getElementById('nav-icon').innerText = "↗️";
-          pathGroup.rotation.y = Math.PI / 4;
-        } else if (userProgress < 0.85) {
-          document.getElementById('nav-text').innerText = "Walk straight towards Panel Stores";
-          document.getElementById('nav-icon').innerText = "⬆️";
-          pathGroup.rotation.y = 0;
-        } else {
-          document.getElementById('nav-text').innerText = "Arrived at Target Area!";
-          document.getElementById('nav-icon').innerText = "📍";
-          document.getElementById('target-sub').innerText = "Destination Reached";
-        }
+        advanceProgress();
       }
     });
 
-    // Compass direction integration
-    window.addEventListener('deviceorientation', (e) => {
-      if (e.alpha !== null) {
-        pathGroup.rotation.y = THREE.MathUtils.degToRad(-e.alpha);
-      }
-    });
+    imgEl.onload = () => {
+      resizeMap();
+      drawBlueprintOverlay();
+    };
 
-    // Animation loop
     let clock = new THREE.Clock();
     function animate() {
       requestAnimationFrame(animate);
@@ -237,8 +272,8 @@
     animate();
 
     window.addEventListener('resize', () => {
-      renderer.setSize(window.innerWidth, window.innerHeight * 0.50);
-      camera.aspect = window.innerWidth / (window.innerHeight * 0.50);
+      renderer.setSize(window.innerWidth, window.innerHeight * 0.42);
+      camera.aspect = window.innerWidth / (window.innerHeight * 0.42);
       camera.updateProjectionMatrix();
       resizeMap();
     });
