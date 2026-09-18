@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport"
-      content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>Indoor AR Navigation</title>
 
@@ -15,35 +14,34 @@
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: #f4f6f8;
+    background: #f4f4f4;
 }
 
-/* HOME */
-
+/* HOME PAGE */
 #home {
     min-height: 100vh;
-    padding: 25px 18px;
+    padding: 30px 20px;
+    text-align: center;
 }
 
 h1 {
-    text-align: center;
-    margin-top: 30px;
+    margin-top: 50px;
 }
 
 .subtitle {
-    text-align: center;
     color: #666;
+    margin-bottom: 35px;
 }
 
 .searchBox {
     max-width: 450px;
-    margin: 35px auto;
+    margin: auto;
 }
 
 input {
     width: 100%;
-    padding: 15px;
-    border: 1px solid #bbb;
+    padding: 16px;
+    border: 1px solid #aaa;
     border-radius: 10px;
     font-size: 17px;
 }
@@ -60,9 +58,8 @@ button {
     font-weight: bold;
 }
 
-/* CAMERA */
-
-#navigation {
+/* AR SCREEN */
+#arScreen {
     display: none;
     position: fixed;
     inset: 0;
@@ -76,117 +73,129 @@ button {
     object-fit: cover;
 }
 
-#topBar {
+/* TOP */
+#topInfo {
     position: absolute;
     top: 15px;
     left: 15px;
     right: 15px;
+
     padding: 14px;
-    border-radius: 12px;
-    background: rgba(0,0,0,.65);
+
+    background: rgba(0,0,0,.70);
     color: white;
+
+    border-radius: 12px;
+
     text-align: center;
     z-index: 5;
 }
 
-#destinationName {
+#title {
     font-size: 20px;
     font-weight: bold;
 }
 
-#stepText {
-    margin-top: 5px;
+#step {
+    margin-top: 6px;
     font-size: 15px;
 }
 
 /* AR ARROW */
-
-#arArrow {
+#arrow {
     position: absolute;
+
     left: 50%;
     top: 50%;
 
-    transform:
-        translate(-50%, -50%);
+    transform: translate(-50%, -50%);
 
-    font-size: 125px;
-    font-weight: bold;
+    font-size: 130px;
 
     color: #00ff55;
 
-    text-shadow:
-        0 0 8px black,
-        0 0 20px black;
+    font-weight: bold;
 
-    transition:
-        transform .4s ease;
+    text-shadow:
+        0 0 10px black,
+        0 0 25px black;
+
+    transition: .4s;
 }
 
-/* bottom */
-
-#bottomBar {
+/* BOTTOM */
+#bottomInfo {
     position: absolute;
+
     left: 15px;
     right: 15px;
     bottom: 20px;
 
-    padding: 15px;
+    padding: 16px;
+
+    background: rgba(0,0,0,.75);
+
+    color: white;
 
     border-radius: 14px;
-
-    background: rgba(0,0,0,.7);
-    color: white;
 
     text-align: center;
 }
 
-#direction {
-    font-size: 24px;
+#instruction {
+    font-size: 23px;
     font-weight: bold;
 }
 
-#checkpoint {
-    margin-top: 5px;
+#location {
+    margin-top: 7px;
     font-size: 14px;
 }
 
-/* close */
-
+/* CLOSE */
 #close {
     position: absolute;
+
     right: 15px;
     top: 15px;
 
     width: auto;
 
-    padding: 9px 14px;
+    padding: 10px 15px;
 
     background: red;
 
     z-index: 10;
 }
 
-/* QR */
+/* NEXT CHECKPOINT */
+#next {
+    position: absolute;
 
-#qrBox {
-    margin-top: 20px;
-    text-align: center;
-    color: #555;
+    left: 20px;
+    right: 20px;
+    bottom: 100px;
+
+    width: calc(100% - 40px);
+
+    background: #1769ff;
+
+    z-index: 10;
 }
 </style>
 </head>
 
+
 <body>
 
+<!-- ================= HOME ================= -->
 
-<!-- HOME SCREEN -->
-
-<section id="home">
+<div id="home">
 
     <h1>Indoor Navigation</h1>
 
     <div class="subtitle">
-        Company Indoor Navigation System
+        HR Office → Electronics Lab
     </div>
 
     <div class="searchBox">
@@ -194,24 +203,22 @@ button {
         <input
             id="search"
             type="text"
-            placeholder="Search destination...">
+            placeholder="Search destination">
 
-        <button onclick="findDestination()">
-            Search
+        <button onclick="startProject()">
+            Start Navigation
         </button>
-
-        <div id="qrBox">
-            Scan the location QR to start navigation
-        </div>
 
     </div>
 
-</section>
+</div>
 
 
-<!-- NAVIGATION SCREEN -->
+<!-- ================= AR NAVIGATION ================= -->
 
-<section id="navigation">
+<div id="arScreen">
+
+    <!-- MOBILE CAMERA -->
 
     <video
         id="camera"
@@ -219,353 +226,18 @@ button {
         playsinline>
     </video>
 
+
+    <!-- CLOSE -->
+
     <button
         id="close"
-        onclick="stopNavigation()">
+        onclick="closeNavigation()">
         ✕
     </button>
 
-    <div id="topBar">
 
-        <div id="destinationName">
-            Electronics Lab
-        </div>
+    <!-- TOP INFORMATION -->
 
-        <div id="stepText">
-            HR Office → Electronics Lab
-        </div>
+    <div id="topInfo">
 
-    </div>
-
-
-    <div id="arArrow">
-        ↑
-    </div>
-
-
-    <div id="bottomBar">
-
-        <div id="direction">
-            GO STRAIGHT
-        </div>
-
-        <div id="checkpoint">
-            Starting from HR Office
-        </div>
-
-    </div>
-
-</section>
-
-
-<script>
-
-/*
-====================================================
-INDOOR ROUTE DATA
-====================================================
-
-HR Office → Electronics Lab
-
-Each checkpoint represents one position
-inside the company.
-
-Later we will replace these example checkpoints
-with the exact points from your green path.
-*/
-
-const route = [
-
-    {
-        id: "HR",
-        name: "HR Office",
-        direction: "straight",
-        text: "Start from HR Office"
-    },
-
-    {
-        id: "P1",
-        name: "Path 1",
-        direction: "straight",
-        text: "Go straight"
-    },
-
-    {
-        id: "P2",
-        name: "Junction",
-        direction: "right",
-        text: "Turn RIGHT"
-    },
-
-    {
-        id: "P3",
-        name: "Path 2",
-        direction: "straight",
-        text: "Go straight"
-    },
-
-    {
-        id: "P4",
-        name: "Path 3",
-        direction: "left",
-        text: "Turn LEFT"
-    },
-
-    {
-        id: "EL",
-        name: "Electronics Lab",
-        direction: "destination",
-        text: "You reached Electronics Lab"
-    }
-
-];
-
-
-let currentStep = 0;
-let cameraStream = null;
-
-
-/*
-====================================================
-DESTINATION SEARCH
-====================================================
-*/
-
-function findDestination() {
-
-    const value =
-        document
-        .getElementById("search")
-        .value
-        .trim()
-        .toLowerCase();
-
-
-    if (
-        value === "electronics lab" ||
-        value.includes("electronics")
-    ) {
-
-        currentStep = 0;
-
-        startNavigation();
-
-    } else {
-
-        alert(
-            "Destination not found.\n\n" +
-            "Available destination:\n" +
-            "Electronics Lab"
-        );
-
-    }
-
-}
-
-
-/*
-====================================================
-START CAMERA NAVIGATION
-====================================================
-*/
-
-async function startNavigation() {
-
-    try {
-
-        cameraStream =
-            await navigator.mediaDevices
-            .getUserMedia({
-
-                video: {
-                    facingMode: {
-                        ideal: "environment"
-                    }
-                },
-
-                audio: false
-
-            });
-
-
-        document
-        .getElementById("camera")
-        .srcObject = cameraStream;
-
-
-        document
-        .getElementById("home")
-        .style.display = "none";
-
-
-        document
-        .getElementById("navigation")
-        .style.display = "block";
-
-
-        updateNavigation();
-
-    }
-
-    catch(error) {
-
-        alert(
-            "Camera permission required.\n\n" +
-            "Please allow camera access."
-        );
-
-    }
-
-}
-
-
-/*
-====================================================
-UPDATE AR DIRECTION
-====================================================
-*/
-
-function updateNavigation() {
-
-    const step = route[currentStep];
-
-    const arrow =
-        document.getElementById("arArrow");
-
-    const direction =
-        document.getElementById("direction");
-
-    const checkpoint =
-        document.getElementById("checkpoint");
-
-
-    document
-    .getElementById("stepText")
-    .innerText =
-        "HR Office → Electronics Lab";
-
-
-    checkpoint.innerText =
-        step.name;
-
-
-    /*
-    STRAIGHT
-    */
-
-    if (step.direction === "straight") {
-
-        arrow.innerText = "↑";
-
-        arrow.style.transform =
-            "translate(-50%, -50%) rotate(0deg)";
-
-        direction.innerText =
-            "GO STRAIGHT";
-
-    }
-
-
-    /*
-    RIGHT
-    */
-
-    else if (step.direction === "right") {
-
-        arrow.innerText = "→";
-
-        arrow.style.transform =
-            "translate(-50%, -50%)";
-
-        direction.innerText =
-            "TURN RIGHT";
-
-    }
-
-
-    /*
-    LEFT
-    */
-
-    else if (step.direction === "left") {
-
-        arrow.innerText = "←";
-
-        arrow.style.transform =
-            "translate(-50%, -50%)";
-
-        direction.innerText =
-            "TURN LEFT";
-
-    }
-
-
-    /*
-    DESTINATION
-    */
-
-    else if (step.direction === "destination") {
-
-        arrow.innerText = "✓";
-
-        arrow.style.transform =
-            "translate(-50%, -50%)";
-
-        direction.innerText =
-            "YOU REACHED ELECTRONICS LAB";
-
-        checkpoint.innerText =
-            "Destination reached";
-
-    }
-
-}
-
-
-/*
-====================================================
-QR CHECKPOINT SYSTEM
-====================================================
-
-Example QR URLs:
-
-?point=HR
-?point=P1
-?point=P2
-?point=P3
-?point=P4
-?point=EL
-
-When QR is scanned, the app can identify
-the user's current checkpoint.
-*/
-
-function readQRPoint() {
-
-    const params =
-        new URLSearchParams(
-            window.location.search
-        );
-
-    const point =
-        params.get("point");
-
-
-    if (!point) {
-        return;
-    }
-
-
-    const index =
-        route.findIndex(
-            item => item.id === point
-        );
-
-
-    if (index !== -1) {
-
-        currentStep = index;
-
-        updateNavigation();
-
-    }
+        <div
