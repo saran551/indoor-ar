@@ -1,94 +1,106 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>AR Indoor Navigation</title>
+  <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>AR Indoor Navigation</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { overflow: hidden; font-family: sans-serif; background: #000; color: #fff; }
+    body { overflow: hidden; font-family: Arial, sans-serif; background: #000; color: #fff; }
 
+    /* Top Controls */
     #top-nav {
-      position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
-      display: flex; gap: 8px; z-index: 10; width: 95%; max-width: 400px;
+      position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 8px; z-index: 10; width: 92%; max-width: 400px;
     }
     select, button {
-      padding: 10px; border-radius: 6px; border: none; font-weight: bold; font-size: 14px;
+      padding: 10px 12px; border-radius: 8px; border: none; font-weight: bold; font-size: 14px;
     }
-    select { flex: 1; background: #00bcd4; color: #fff; }
-    .btn-blue { background: #1a237e; color: #fff; }
+    select { flex: 1; background: #00bcd4; color: #fff; outline: none; }
+    .btn { background: #1a237e; color: #fff; cursor: pointer; }
 
-    #main-view { position: relative; width: 100vw; height: 100vh; }
-    video { width: 100%; height: 100%; object-fit: cover; }
-    #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+    /* Fullscreen Viewports */
+    #webcam { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; object-fit: cover; }
+    #ar-canvas { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; }
 
+    /* QR Code Scanner Overlay */
     #qr-overlay {
-      position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
-      width: 260px; z-index: 8; border: 2px solid #00bcd4; border-radius: 8px; background: rgba(0,0,0,0.5);
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 280px; z-index: 20; border: 2px solid #00bcd4; border-radius: 12px;
+      background: rgba(0,0,0,0.85); padding: 15px; text-align: center;
     }
+    #reader { width: 100%; margin-top: 10px; }
 
+    /* Bottom Minimap Overlay */
     #minimap-container {
       position: absolute; bottom: 15px; left: 50%; transform: translateX(-50%);
-      width: 200px; height: 80px; background: #fff; border: 2px solid #000; z-index: 10;
+      width: 200px; height: 90px; background: #ffffff; border: 2px solid #000; z-index: 10;
+      border-radius: 6px; overflow: hidden;
     }
     #minimap-canvas { width: 100%; height: 100%; }
 
+    /* Destination Reached Popup */
     #popup {
       position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-      background: #fff; color: #000; padding: 20px; border-radius: 10px;
-      text-align: center; display: none; z-index: 20; box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      background: #fff; color: #000; padding: 20px; border-radius: 12px;
+      text-align: center; display: none; z-index: 30; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
-    #popup button { margin: 10px 5px 0 5px; background: #00bcd4; color: #fff; }
+    #popup button { margin-top: 12px; background: #00bcd4; color: #fff; width: 80px; }
   </style>
 </head>
 <body>
 
-  <div id="main-view">
-    <div id="top-nav">
-      <select id="destination-select" onchange="selectDestination()">
-        <option value="">Select Destination</option>
-        <option value="HR_OFFICE">HR Office</option>
-        <option value="ELECTRONICS_LAB">Electronics Lab</option>
-        <option value="ROOM_128">Room 128</option>
-      </select>
-      <button class="btn-blue" onclick="location.reload()">← Back</button>
-      <button class="btn-blue" onclick="clearNav()">Clear Navigation</button>
-    </div>
+  <!-- Live Camera Background -->
+  <video id="webcam" autoplay playsinline muted></video>
+  <canvas id="ar-canvas"></canvas>
 
-    <video id="webcam" autoplay playsinline muted></video>
-    <canvas id="ar-canvas"></canvas>
+  <!-- Top Navigation UI -->
+  <div id="top-nav">
+    <select id="destination-select" onchange="startNavigation()">
+      <option value="">Select Destination</option>
+      <option value="ELECTRONICS_LAB">Electronics Lab</option>
+      <option value="HR_OFFICE">HR Office</option>
+      <option value="ROOM_128">Room 128</option>
+    </select>
+    <button class="btn" onclick="location.reload()">Back</button>
+  </div>
 
-    <div id="qr-overlay">
-      <div id="reader"></div>
-    </div>
+  <!-- QR Scanner Modal -->
+  <div id="qr-overlay">
+    <p style="font-weight:bold; color:#00bcd4;">Scan Floor QR Code</p>
+    <div id="reader"></div>
+  </div>
 
-    <div id="minimap-container">
-      <img id="map-img" src="IMG_20260917_094427.png" style="display:none;" crossorigin="anonymous">
-      <canvas id="minimap-canvas"></canvas>
-    </div>
+  <!-- Minimap Canvas -->
+  <div id="minimap-container">
+    <canvas id="minimap-canvas"></canvas>
+  </div>
 
-    <div id="popup">
-      <p style="font-weight:bold;">You have reached to your destination.</p>
-      <button onclick="location.reload()">Home</button>
-      <button onclick="location.reload()">Exit</button>
-    </div>
+  <!-- Arrival Popup -->
+  <div id="popup">
+    <p style="font-weight:bold; font-size:16px;">You have reached your destination!</p>
+    <button onclick="location.reload()">Exit</button>
   </div>
 
   <script>
-    let html5QrCode;
     let scene, camera, renderer, arrowGroup, pinMesh;
-    let stepCount = 0, userProgress = 0, navActive = false;
+    let navActive = false, userProgress = 0, stepCount = 0;
+    let html5QrCode;
 
+    // Initialize Camera Stream
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => {
         document.getElementById('webcam').srcObject = stream;
-        initScanner();
-        initAR();
+        initQRScanner();
+        init3DScene();
+        initSensors();
       })
-      .catch(err => alert("Camera permission required!"));
+      .catch(() => alert("Camera permission is required for AR Navigation!"));
 
-    function initScanner() {
+    // QR Code Scanner Implementation
+    function initQRScanner() {
       html5QrCode = new Html5Qrcode("reader");
       html5QrCode.start(
         { facingMode: "environment" },
@@ -101,7 +113,8 @@
       );
     }
 
-    function initAR() {
+    // Three.js AR Scene Setup
+    function init3DScene() {
       const arCanvas = document.getElementById('ar-canvas');
       renderer = new THREE.WebGLRenderer({ canvas: arCanvas, alpha: true, antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -113,30 +126,29 @@
       arrowGroup = new THREE.Group();
       scene.add(arrowGroup);
 
-      // Cyan Arrows facing FORWARD direction
+      // Create 3D Arrow Objects
       for (let i = 0; i < 6; i++) {
         const shape = new THREE.Shape();
         shape.moveTo(0, 0.3);
-        shape.lineTo(-0.2, -0.2);
-        shape.lineTo(-0.08, -0.2);
-        shape.lineTo(-0.08, -0.5);
-        shape.lineTo(0.08, -0.5);
-        shape.lineTo(0.08, -0.2);
-        shape.lineTo(0.2, -0.2);
+        shape.lineTo(-0.18, -0.15);
+        shape.lineTo(-0.07, -0.15);
+        shape.lineTo(-0.07, -0.45);
+        shape.lineTo(0.07, -0.45);
+        shape.lineTo(0.07, -0.15);
+        shape.lineTo(0.18, -0.15);
         shape.closePath();
 
         const geom = new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
         const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
         const arrow = new THREE.Mesh(geom, mat);
-        
-        // Correct facing angle towards forward path
+
         arrow.rotation.x = Math.PI / 2;
-        arrow.rotation.z = Math.PI; 
         arrow.position.set(0, -0.6, -1.2 * (i + 1));
         arrowGroup.add(arrow);
       }
 
-      const pinGeom = new THREE.ConeGeometry(0.35, 0.9, 16);
+      // Create Red Location Pin Marker
+      const pinGeom = new THREE.ConeGeometry(0.3, 0.8, 16);
       const pinMat = new THREE.MeshBasicMaterial({ color: 0xff1744 });
       pinMesh = new THREE.Mesh(pinGeom, pinMat);
       pinMesh.rotation.x = Math.PI;
@@ -147,81 +159,86 @@
       animate();
     }
 
-    function selectDestination() {
-      const val = document.getElementById('destination-select').value;
-      if (!val) return;
+    // Start AR Route Logic
+    function startNavigation() {
+      const dest = document.getElementById('destination-select').value;
+      if (!dest) return;
       navActive = true;
       stepCount = 0;
       userProgress = 0;
-      pinMesh.visible = false;
-      document.getElementById('popup').style.display = 'none';
       document.getElementById('qr-overlay').style.display = 'none';
-    }
-
-    function clearNav() {
-      navActive = false;
-      userProgress = 0;
-      pinMesh.visible = false;
-      document.getElementById('destination-select').value = "";
       document.getElementById('popup').style.display = 'none';
+      pinMesh.visible = false;
     }
 
-    window.addEventListener('devicemotion', (e) => {
-      if (!navActive) return;
-      let acc = e.accelerationIncludingGravity;
-      if (!acc) return;
-      let mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-      if (mag > 12.0) {
-        stepCount++;
-        userProgress = Math.min(1.0, stepCount / 18);
-        if (userProgress >= 1.0) {
-          pinMesh.visible = true;
-          document.getElementById('popup').style.display = 'block';
-        }
-      }
-    });
+    // Device Sensor Setup (Gyroscope + Accelerometer)
+    function initSensors() {
+      // Rotation Tracker
+      window.addEventListener('deviceorientation', (e) => {
+        if (!navActive || !arrowGroup || e.alpha === null) return;
+        let heading = e.alpha; // Compass orientation angle
+        let radians = THREE.MathUtils.degToRad(heading);
+        arrowGroup.rotation.y = -radians; 
+      });
 
+      // Step Tracker (Pedometer Motion)
+      window.addEventListener('devicemotion', (e) => {
+        if (!navActive) return;
+        let acc = e.accelerationIncludingGravity;
+        if (!acc) return;
+        let magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+        
+        if (magnitude > 12.0) { // Step threshold detected
+          stepCount++;
+          userProgress = Math.min(1.0, stepCount / 20); // 20 steps to destination
+          
+          if (userProgress >= 1.0) {
+            pinMesh.visible = true;
+            document.getElementById('popup').style.display = 'block';
+          }
+        }
+      });
+    }
+
+    // Minimap Rendering Logic
     const minimapCanvas = document.getElementById('minimap-canvas');
     const mapCtx = minimapCanvas.getContext('2d');
-    const mapImg = document.getElementById('map-img');
 
     function drawMinimap() {
       minimapCanvas.width = minimapCanvas.clientWidth;
       minimapCanvas.height = minimapCanvas.clientHeight;
       mapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
 
-      if (mapImg.complete && mapImg.naturalWidth !== 0) {
-        mapCtx.drawImage(mapImg, 0, 0, minimapCanvas.width, minimapCanvas.height);
-      }
-
-      let startX = 20, startY = 60;
-      let endX = 160, endY = 20;
-
-      let currX = startX + (endX - startX) * userProgress;
-      let currY = startY + (endY - startY) * userProgress;
+      let startX = 20, startY = 70;
+      let endX = 170, endY = 20;
 
       if (navActive) {
+        // Path Line
         mapCtx.strokeStyle = '#00e5ff';
         mapCtx.lineWidth = 3;
         mapCtx.beginPath();
         mapCtx.moveTo(startX, startY);
         mapCtx.lineTo(endX, endY);
         mapCtx.stroke();
-      }
 
-      mapCtx.fillStyle = '#0000ff';
-      mapCtx.beginPath();
-      mapCtx.arc(currX, currY, 5, 0, Math.PI * 2);
-      mapCtx.fill();
+        // Current Progress Dot
+        let currentX = startX + (endX - startX) * userProgress;
+        let currentY = startY + (endY - startY) * userProgress;
+
+        mapCtx.fillStyle = '#1a237e';
+        mapCtx.beginPath();
+        mapCtx.arc(currentX, currentY, 6, 0, Math.PI * 2);
+        mapCtx.fill();
+      }
     }
 
+    // Animation Render Loop
     function animate() {
       requestAnimationFrame(animate);
       if (navActive && arrowGroup) {
-        arrowGroup.children.forEach((arrow) => {
-          // Moves FORWARD away from user camera
+        arrowGroup.children.forEach(arrow => {
           arrow.position.z -= 0.015;
-          if (arrow.position.z < -7.2) arrow.position.z = -1.2;
+          if (arrow.position.z < -7.0) arrow.position.z = -1.2;
         });
       }
       drawMinimap();
