@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Indoor Navigation</title>
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0">
+
+<title>Indoor AR Navigation</title>
 
 <style>
 * {
@@ -13,271 +15,275 @@
 body {
     margin: 0;
     font-family: Arial, sans-serif;
-    background: #f2f2f2;
+    background: #111;
 }
 
-.header {
-    background: #1f2937;
-    color: white;
-    padding: 15px;
-    text-align: center;
-}
-
-.search {
-    padding: 15px;
+#startScreen {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 25px;
     background: white;
+}
+
+h1 {
+    margin-bottom: 10px;
 }
 
 input {
     width: 100%;
-    padding: 13px;
-    border: 1px solid #ccc;
-    border-radius: 8px;
-    font-size: 16px;
+    max-width: 350px;
+    padding: 15px;
+    font-size: 17px;
+    border: 1px solid #aaa;
+    border-radius: 10px;
 }
 
 button {
     width: 100%;
-    margin-top: 10px;
-    padding: 13px;
-    border: none;
-    border-radius: 8px;
-    background: #2563eb;
-    color: white;
-    font-size: 16px;
-}
-
-#map {
-    position: relative;
-    margin: 15px;
-    height: 500px;
-    background: white;
-    border: 2px solid #aaa;
-    overflow: hidden;
-}
-
-/* Walking path */
-.path {
-    position: absolute;
-    height: 8px;
-    background: #22c55e;
+    max-width: 350px;
+    margin-top: 12px;
+    padding: 15px;
+    border: 0;
     border-radius: 10px;
-    transform-origin: left center;
-}
-
-/* Route */
-.route {
-    position: absolute;
-    height: 7px;
-    background: red;
-    border-radius: 10px;
-    transform-origin: left center;
-}
-
-/* Location markers */
-.marker {
-    position: absolute;
-    padding: 7px 10px;
-    border-radius: 20px;
+    font-size: 17px;
+    background: #1769ff;
     color: white;
-    font-weight: bold;
-    font-size: 13px;
 }
 
-.hr {
-    left: 30px;
-    top: 420px;
-    background: #dc2626;
-}
-
-.lab {
-    right: 25px;
-    top: 70px;
-    background: #2563eb;
-}
-
-/* Arrow */
-.arrow {
-    position: absolute;
-    font-size: 35px;
-    color: red;
-    transition: all 0.5s;
-}
-
-.camera {
+#arScreen {
     display: none;
     position: fixed;
     inset: 0;
     background: black;
-    z-index: 10;
+    overflow: hidden;
 }
 
-video {
+#camera {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
-.cameraArrow {
-    position: absolute;
-    left: 50%;
-    top: 45%;
-    transform: translate(-50%, -50%);
-    font-size: 80px;
-    color: red;
-    text-shadow: 0 0 10px white;
-}
-
-.close {
+/* Top information */
+#info {
     position: absolute;
     top: 20px;
+    left: 15px;
+    right: 15px;
+    padding: 14px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.65);
+    color: white;
+    text-align: center;
+    font-size: 18px;
+}
+
+/* Main AR arrow */
+#arrow {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 120px;
+    color: #00ff55;
+    text-shadow:
+        0 0 10px black,
+        0 0 25px black;
+    animation: moveArrow 1s infinite;
+}
+
+@keyframes moveArrow {
+    0% {
+        transform: translate(-50%, -45%);
+    }
+
+    50% {
+        transform: translate(-50%, -55%);
+    }
+
+    100% {
+        transform: translate(-50%, -45%);
+    }
+}
+
+/* Direction text */
+#direction {
+    position: absolute;
+    bottom: 110px;
+    left: 20px;
     right: 20px;
+    padding: 15px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+}
+
+/* Close button */
+#closeBtn {
+    position: absolute;
+    top: 20px;
+    right: 15px;
     width: auto;
     padding: 10px 15px;
     background: red;
-    z-index: 20;
+    z-index: 10;
 }
 </style>
 </head>
 
 <body>
 
-<div class="header">
-    <h2>Indoor Navigation</h2>
-    <p>HR Office → Elections Lab</p>
-</div>
+<!-- START SCREEN -->
 
-<div class="search">
-    <input id="destination"
-           type="text"
-           placeholder="Search destination...">
+<div id="startScreen">
+
+    <h1>Indoor Navigation</h1>
+
+    <p>HR Office → Elections Lab</p>
+
+    <input
+        id="destination"
+        type="text"
+        placeholder="Search destination">
 
     <button onclick="startNavigation()">
         Start Navigation
     </button>
 
-    <button onclick="openCamera()">
-        Open Camera Navigation
-    </button>
 </div>
 
-<div id="map">
 
-    <!-- Green walking paths -->
-    <div class="path"
-         style="left:50px; top:420px; width:300px; transform:rotate(-25deg);">
-    </div>
+<!-- AR CAMERA SCREEN -->
 
-    <div class="path"
-         style="left:320px; top:290px; width:170px; transform:rotate(-55deg);">
-    </div>
+<div id="arScreen">
 
-    <div class="path"
-         style="left:420px; top:150px; width:150px; transform:rotate(-10deg);">
-    </div>
+    <video
+        id="camera"
+        autoplay
+        playsinline>
+    </video>
 
-    <!-- HR Office -->
-    <div class="marker hr">
-        HR Office
-    </div>
-
-    <!-- Elections Lab -->
-    <div class="marker lab">
-        Elections Lab
-    </div>
-
-    <!-- Route arrow -->
-    <div id="arrow" class="arrow">➜</div>
-
-</div>
-
-<!-- Camera screen -->
-<div id="cameraScreen" class="camera">
-
-    <button class="close" onclick="closeCamera()">
-        Close
+    <button
+        id="closeBtn"
+        onclick="closeCamera()">
+        ✕
     </button>
 
-    <video id="camera" autoplay playsinline></video>
+    <div id="info">
+        HR Office → Elections Lab
+    </div>
 
-    <div class="cameraArrow">
+    <div id="arrow">
         ↑
     </div>
 
+    <div id="direction">
+        Go Straight
+    </div>
+
 </div>
+
 
 <script>
 
-function startNavigation() {
+let cameraStream = null;
 
-    let destination =
-        document.getElementById("destination").value
-        .toLowerCase();
 
-    if (destination.includes("election")) {
+async function startNavigation() {
 
-        let arrow =
-            document.getElementById("arrow");
+    const destination =
+        document
+        .getElementById("destination")
+        .value
+        .toLowerCase()
+        .trim();
 
-        arrow.style.left = "300px";
-        arrow.style.top = "250px";
 
-        alert(
-            "Route found!\nHR Office → Elections Lab"
-        );
-
-    } else {
+    if (!destination.includes("election")) {
 
         alert(
-            "Destination not found.\nTry: Elections Lab"
+            "Destination not found.\n\n" +
+            "Try: Elections Lab"
         );
+
+        return;
     }
-}
 
-
-async function openCamera() {
 
     try {
 
-        const stream =
-            await navigator.mediaDevices.getUserMedia({
+        cameraStream =
+            await navigator.mediaDevices
+            .getUserMedia({
+
                 video: {
                     facingMode: {
                         ideal: "environment"
                     }
                 },
+
                 audio: false
+
             });
 
-        document.getElementById("camera").srcObject =
-            stream;
 
-        document.getElementById("cameraScreen")
-            .style.display = "block";
+        const video =
+            document.getElementById("camera");
 
-    } catch (error) {
+        video.srcObject = cameraStream;
+
+
+        document
+        .getElementById("startScreen")
+        .style.display = "none";
+
+
+        document
+        .getElementById("arScreen")
+        .style.display = "block";
+
+
+    }
+
+    catch(error) {
 
         alert(
-            "Camera permission required."
+            "Camera permission denied.\n" +
+            "Please allow camera access."
         );
+
     }
+
 }
 
 
 function closeCamera() {
 
-    let video =
-        document.getElementById("camera");
+    if (cameraStream) {
 
-    if (video.srcObject) {
+        cameraStream
+        .getTracks()
+        .forEach(track => track.stop());
 
-        video.srcObject
-            .getTracks()
-            .forEach(track => track.stop());
+        cameraStream = null;
     }
 
-    document.getElementById("cameraScreen")
-        .style.display = "none";
+
+    document
+    .getElementById("arScreen")
+    .style.display = "none";
+
+
+    document
+    .getElementById("startScreen")
+    .style.display = "flex";
+
 }
 
 </script>
