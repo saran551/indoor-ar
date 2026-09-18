@@ -1,243 +1,187 @@
+
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR Navigation</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { overflow: hidden; font-family: sans-serif; background: #000; color: #fff; }
 
-<title>Indoor AR Navigation</title>
+    #qr-container {
+      position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+      background: #111; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    #reader { width: 85%; max-width: 380px; }
 
-<style>
-* {
-    box-sizing: border-box;
-}
+    #ar-view { position: absolute; top: 0; left: 0; width: 100vw; height: 100vh; display: none; }
+    video { width: 100%; height: 100%; object-fit: cover; }
+    #ar-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
 
-body {
-    margin: 0;
-    font-family: Arial, sans-serif;
-    background: #f4f4f4;
-}
+    #nav-bar {
+      position: absolute; top: 15px; left: 50%; transform: translateX(-50%);
+      display: flex; gap: 10px; z-index: 5; width: 90%; max-width: 400px;
+    }
+    select, button {
+      padding: 10px; border-radius: 8px; border: none; font-weight: bold; background: #00bcd4; color: #fff;
+    }
+    select { flex: 1; }
 
-/* HOME PAGE */
-#home {
-    min-height: 100vh;
-    padding: 30px 20px;
-    text-align: center;
-}
-
-h1 {
-    margin-top: 50px;
-}
-
-.subtitle {
-    color: #666;
-    margin-bottom: 35px;
-}
-
-.searchBox {
-    max-width: 450px;
-    margin: auto;
-}
-
-input {
-    width: 100%;
-    padding: 16px;
-    border: 1px solid #aaa;
-    border-radius: 10px;
-    font-size: 17px;
-}
-
-button {
-    width: 100%;
-    padding: 15px;
-    margin-top: 12px;
-    border: none;
-    border-radius: 10px;
-    background: #1769ff;
-    color: white;
-    font-size: 17px;
-    font-weight: bold;
-}
-
-/* AR SCREEN */
-#arScreen {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: black;
-    z-index: 100;
-}
-
-#camera {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
-
-/* TOP */
-#topInfo {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    right: 15px;
-
-    padding: 14px;
-
-    background: rgba(0,0,0,.70);
-    color: white;
-
-    border-radius: 12px;
-
-    text-align: center;
-    z-index: 5;
-}
-
-#title {
-    font-size: 20px;
-    font-weight: bold;
-}
-
-#step {
-    margin-top: 6px;
-    font-size: 15px;
-}
-
-/* AR ARROW */
-#arrow {
-    position: absolute;
-
-    left: 50%;
-    top: 50%;
-
-    transform: translate(-50%, -50%);
-
-    font-size: 130px;
-
-    color: #00ff55;
-
-    font-weight: bold;
-
-    text-shadow:
-        0 0 10px black,
-        0 0 25px black;
-
-    transition: .4s;
-}
-
-/* BOTTOM */
-#bottomInfo {
-    position: absolute;
-
-    left: 15px;
-    right: 15px;
-    bottom: 20px;
-
-    padding: 16px;
-
-    background: rgba(0,0,0,.75);
-
-    color: white;
-
-    border-radius: 14px;
-
-    text-align: center;
-}
-
-#instruction {
-    font-size: 23px;
-    font-weight: bold;
-}
-
-#location {
-    margin-top: 7px;
-    font-size: 14px;
-}
-
-/* CLOSE */
-#close {
-    position: absolute;
-
-    right: 15px;
-    top: 15px;
-
-    width: auto;
-
-    padding: 10px 15px;
-
-    background: red;
-
-    z-index: 10;
-}
-
-/* NEXT CHECKPOINT */
-#next {
-    position: absolute;
-
-    left: 20px;
-    right: 20px;
-    bottom: 100px;
-
-    width: calc(100% - 40px);
-
-    background: #1769ff;
-
-    z-index: 10;
-}
-</style>
+    #minimap-container {
+      position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+      width: 180px; height: 110px; background: #fff; border: 2px solid #000; z-index: 5;
+    }
+    #minimap-canvas { width: 100%; height: 100%; }
+  </style>
 </head>
-
-
 <body>
 
-<!-- ================= HOME ================= -->
+  <div id="qr-container">
+    <h3 style="margin-bottom:15px;">Scan HR Office QR Code</h3>
+    <div id="reader"></div>
+  </div>
 
-<div id="home">
-
-    <h1>Indoor Navigation</h1>
-
-    <div class="subtitle">
-        HR Office → Electronics Lab
+  <div id="ar-view">
+    <div id="nav-bar">
+      <select id="dest-select" onchange="startNav()">
+        <option value="ELECTRONICS_LAB">Electronics Lab</option>
+      </select>
+      <button onclick="location.reload()">Reset</button>
     </div>
 
-    <div class="searchBox">
+    <video id="webcam" autoplay playsinline muted></video>
+    <canvas id="ar-canvas"></canvas>
 
-        <input
-            id="search"
-            type="text"
-            placeholder="Search destination">
-
-        <button onclick="startProject()">
-            Start Navigation
-        </button>
-
+    <div id="minimap-container">
+      <img id="map-img" src="IMG_20260917_094427.png" style="display:none;" crossorigin="anonymous">
+      <canvas id="minimap-canvas"></canvas>
     </div>
+  </div>
 
-</div>
+  <script>
+    let html5QrCode, scene, camera, renderer, arrowGroup;
+    let stepCount = 0, userProgress = 0, navActive = false;
 
+    function startScanner() {
+      html5QrCode = new Html5Qrcode("reader");
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          html5QrCode.stop().then(() => {
+            document.getElementById('qr-container').style.display = 'none';
+            document.getElementById('ar-view').style.display = 'block';
+            initAR();
+            startNav();
+          });
+        },
+        () => {}
+      );
+    }
+    startScanner();
 
-<!-- ================= AR NAVIGATION ================= -->
+    function initAR() {
+      const video = document.getElementById('webcam');
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+        .then(stream => { video.srcObject = stream; });
 
-<div id="arScreen">
+      const canvas = document.getElementById('ar-canvas');
+      renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
 
-    <!-- MOBILE CAMERA -->
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 1.2, 0);
 
-    <video
-        id="camera"
-        autoplay
-        playsinline>
-    </video>
+      arrowGroup = new THREE.Group();
+      scene.add(arrowGroup);
 
+      // Create Cyan AR Arrows
+      for (let i = 0; i < 6; i++) {
+        const shape = new THREE.Shape();
+        shape.moveTo(0, 0.3);
+        shape.lineTo(-0.2, -0.2);
+        shape.lineTo(-0.08, -0.2);
+        shape.lineTo(-0.08, -0.5);
+        shape.lineTo(0.08, -0.5);
+        shape.lineTo(0.08, -0.2);
+        shape.lineTo(0.2, -0.2);
+        shape.closePath();
 
-    <!-- CLOSE -->
+        const geom = new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
+        const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+        const arrow = new THREE.Mesh(geom, mat);
+        arrow.rotation.x = Math.PI / 2;
+        arrow.position.set(0, -0.8, -1.2 * (i + 1));
+        arrowGroup.add(arrow);
+      }
 
-    <button
-        id="close"
-        onclick="closeNavigation()">
-        ✕
-    </button>
+      animate();
+    }
 
+    function startNav() {
+      navActive = true;
+      stepCount = 0;
+      userProgress = 0;
+    }
 
-    <!-- TOP INFORMATION -->
+    window.addEventListener('devicemotion', (e) => {
+      if (!navActive) return;
+      let acc = e.accelerationIncludingGravity;
+      if (!acc) return;
+      let mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+      if (mag > 12.0) {
+        stepCount++;
+        userProgress = Math.min(1.0, stepCount / 15);
+      }
+    });
 
-    <div id="topInfo">
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const mapCtx = minimapCanvas.getContext('2d');
+    const mapImg = document.getElementById('map-img');
 
-        <div
+    function drawMinimap() {
+      minimapCanvas.width = minimapCanvas.clientWidth;
+      minimapCanvas.height = minimapCanvas.clientHeight;
+      mapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+      if (mapImg.complete && mapImg.naturalWidth !== 0) {
+        mapCtx.drawImage(mapImg, 0, 0, minimapCanvas.width, minimapCanvas.height);
+      }
+
+      let startX = 0.69 * minimapCanvas.width, startY = 0.82 * minimapCanvas.height;
+      let endX = 0.77 * minimapCanvas.width, endY = 0.76 * minimapCanvas.height;
+
+      let currX = startX + (endX - startX) * userProgress;
+      let currY = startY + (endY - startY) * userProgress;
+
+      mapCtx.strokeStyle = '#00e5ff';
+      mapCtx.lineWidth = 3;
+      mapCtx.beginPath();
+      mapCtx.moveTo(startX, startY);
+      mapCtx.lineTo(endX, endY);
+      mapCtx.stroke();
+
+      mapCtx.fillStyle = '#0000ff';
+      mapCtx.beginPath();
+      mapCtx.arc(currX, currY, 4, 0, Math.PI * 2);
+      mapCtx.fill();
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      if (navActive && arrowGroup) {
+        arrowGroup.children.forEach((arrow) => {
+          arrow.position.z += 0.01;
+          if (arrow.position.z > 0) arrow.position.z = -7.2;
+        });
+      }
+      drawMinimap();
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>
+
