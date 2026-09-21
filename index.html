@@ -33,7 +33,7 @@
     #sensor-btn {
       position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
       z-index: 25; background: #ff9800; color: #fff; padding: 12px 20px;
-      border-radius: 25px; border: none; font-weight: bold; display: block;
+      border-radius: 25px; border: none; font-weight: bold; cursor: pointer;
     }
 
     #minimap-container {
@@ -55,10 +55,10 @@
       <option value="ELECTRONICS_LAB">Electronics Lab</option>
       <option value="HR_OFFICE">HR Office</option>
     </select>
-    <button class="btn" onclick="location.reload()">Back</button>
+    <button class="btn" onclick="location.reload()">Reset</button>
   </div>
 
-  <button id="sensor-btn" onclick="enableSensors()">Enable Motion & Compass</button>
+  <button id="sensor-btn" onclick="enableSensors()">Calibrate Compass & Turn Sync</button>
 
   <div id="qr-overlay">
     <p style="font-weight:bold; color:#00bcd4;">Scan Floor QR Code</p>
@@ -71,7 +71,8 @@
 
   <script>
     let scene, camera, renderer, arrowGroup;
-    let navActive = false, userProgress = 0, stepCount = 0;
+    let navActive = false, userProgress = 0;
+    let baseHeading = null, currentHeading = 0;
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
       .then(stream => {
@@ -82,16 +83,10 @@
       .catch(() => alert("Camera permission required!"));
 
     function enableSensors() {
-      // Request iOS Motion Permissions
       if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-        DeviceOrientationEvent.requestPermission()
-          .then(permissionState => {
-            if (permissionState === 'granted') {
-              bindSensors();
-            } else {
-              alert("Motion permission denied!");
-            }
-          });
+        DeviceOrientationEvent.requestPermission().then(state => {
+          if (state === 'granted') bindSensors();
+        });
       } else {
         bindSensors();
       }
@@ -100,36 +95,36 @@
 
     function bindSensors() {
       window.addEventListener('deviceorientation', (e) => {
-        if (!arrowGroup || e.alpha === null) return;
-        let heading = e.alpha;
-        let radians = THREE.MathUtils.degToRad(heading);
-        arrowGroup.rotation.y = -radians; 
+        let heading = e.webkitCompassHeading || (360 - e.alpha);
+        if (!heading) return;
+
+        if (baseHeading === null) baseHeading = heading;
+        currentHeading = heading - baseHeading;
+
+        if (arrowGroup) {
+          // Dynamic Turn Rotation Sync
+          let targetRad = THREE.MathUtils.degToRad(-currentHeading);
+          arrowGroup.rotation.y = THREE.MathUtils.lerp(arrowGroup.rotation.y, targetRad, 0.1);
+        }
       });
 
       window.addEventListener('devicemotion', (e) => {
         if (!navActive) return;
         let acc = e.accelerationIncludingGravity;
         if (!acc) return;
-        let magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-        if (magnitude > 12.0) { 
-          stepCount++;
-          userProgress = Math.min(1.0, stepCount / 20);
+        let mag = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
+        if (mag > 11.5) {
+          userProgress = Math.min(1.0, userProgress + 0.04);
         }
       });
-      alert("Sensors Active!");
     }
 
     function initQRScanner() {
       let html5QrCode = new Html5Qrcode("reader");
-      html5QrCode.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 200 },
-        () => {
-          document.getElementById('qr-overlay').style.display = 'none';
-          html5QrCode.stop();
-        },
-        () => {}
-      );
+      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: 200 }, () => {
+        document.getElementById('qr-overlay').style.display = 'none';
+        html5QrCode.stop();
+      }, () => {});
     }
 
     function init3DScene() {
@@ -139,22 +134,29 @@
 
       scene = new THREE.Scene();
       camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 1.2, 0);
+      camera.position.set(0, 1.4, 0);
 
       arrowGroup = new THREE.Group();
       scene.add(arrowGroup);
 
+      // 3D Arrows aligned along floor perspective
       for (let i = 0; i < 5; i++) {
         const shape = new THREE.Shape();
-        shape.moveTo(0, 0.3); shape.lineTo(-0.18, -0.15); shape.lineTo(-0.07, -0.15);
-        shape.lineTo(-0.07, -0.45); shape.lineTo(0.07, -0.45); shape.lineTo(0.07, -0.15);
-        shape.lineTo(0.18, -0.15); shape.closePath();
+        shape.moveTo(0, 0.4);
+        shape.lineTo(-0.2, 0.1);
+        shape.lineTo(-0.08, 0.1);
+        shape.lineTo(-0.08, -0.3);
+        shape.lineTo(0.08, -0.3);
+        shape.lineTo(0.08, 0.1);
+        shape.lineTo(0.2, 0.1);
+        shape.closePath();
 
         const geom = new THREE.ExtrudeGeometry(shape, { depth: 0.02, bevelEnabled: false });
-        const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff });
+        const mat = new THREE.MeshBasicMaterial({ color: 0x00e5ff, side: THREE.DoubleSide });
         const arrow = new THREE.Mesh(geom, mat);
-        arrow.rotation.x = Math.PI / 2;
-        arrow.position.set(0, -0.6, -1.2 * (i + 1));
+
+        arrow.rotation.x = -Math.PI / 2;
+        arrow.position.set(0, -0.8, -1.5 * (i + 1));
         arrowGroup.add(arrow);
       }
       animate();
@@ -162,6 +164,7 @@
 
     function startNavigation() {
       navActive = true;
+      userProgress = 0;
       document.getElementById('qr-overlay').style.display = 'none';
     }
 
@@ -169,11 +172,41 @@
       requestAnimationFrame(animate);
       if (navActive && arrowGroup) {
         arrowGroup.children.forEach(arrow => {
-          arrow.position.z -= 0.015;
-          if (arrow.position.z < -6.0) arrow.position.z = -1.2;
+          arrow.position.z += 0.025;
+          if (arrow.position.z > -0.5) arrow.position.z = -7.5;
         });
       }
+      drawMinimap();
       renderer.render(scene, camera);
+    }
+
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const mapCtx = minimapCanvas.getContext('2d');
+
+    function drawMinimap() {
+      minimapCanvas.width = minimapCanvas.clientWidth;
+      minimapCanvas.height = minimapCanvas.clientHeight;
+      mapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+
+      let startX = 20, startY = 70;
+      let endX = 170, endY = 20;
+
+      if (navActive) {
+        mapCtx.strokeStyle = '#00e5ff';
+        mapCtx.lineWidth = 4;
+        mapCtx.beginPath();
+        mapCtx.moveTo(startX, startY);
+        mapCtx.lineTo(endX, endY);
+        mapCtx.stroke();
+
+        let curX = startX + (endX - startX) * userProgress;
+        let curY = startY + (endY - startY) * userProgress;
+
+        mapCtx.fillStyle = '#1a237e';
+        mapCtx.beginPath();
+        mapCtx.arc(curX, curY, 6, 0, Math.PI * 2);
+        mapCtx.fill();
+      }
     }
   </script>
 </body>
