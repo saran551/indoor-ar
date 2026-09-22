@@ -12,27 +12,31 @@
 
   <style>
     body { margin: 0; overflow: hidden; font-family: sans-serif; }
+
+    /* Floating Navigation UI Panel */
     #ui-container {
       position: fixed;
-      top: 10px;
+      top: 15px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: 1000;
-      background: rgba(255, 255, 255, 0.9);
+      z-index: 10000;
+      background: rgba(255, 255, 255, 0.95);
       padding: 12px 16px;
       border-radius: 12px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
       width: 85%;
-      max-width: 380px;
+      max-width: 360px;
     }
+
     select, button {
       width: 100%;
-      padding: 8px;
-      margin-top: 6px;
-      border-radius: 6px;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 8px;
       border: 1px solid #ccc;
       font-size: 14px;
     }
+
     button {
       background-color: #007bff;
       color: white;
@@ -40,90 +44,101 @@
       border: none;
       cursor: pointer;
     }
-    #qr-reader {
+
+    /* Target Scanner Window */
+    #qr-scanner-box {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      z-index: 999;
-      background: black;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 280px;
+      z-index: 9999;
+      background: rgba(0, 0, 0, 0.8);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    #step-instruction {
+      margin-top: 8px;
+      font-size: 13px;
+      color: #333;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
 
-  <!-- UI Overlay -->
+  <!-- Controls Panel -->
   <div id="ui-container">
-    <div><strong>Location:</strong> <span id="start-node">Scan QR Code First</span></div>
+    <div><strong>Location:</strong> <span id="start-node" style="color: red;">Scan QR First</span></div>
     
     <label for="destination" style="margin-top: 8px; display:block;"><strong>Select Destination:</strong></label>
     <select id="destination">
       <option value="">-- Choose Target --</option>
       <option value="ELECTRONICS_LAB">Electronics Lab</option>
-      <option value="CS_LAB">CS Lab</option>
-      <option value="HOD_ROOM">HOD Room</option>
     </select>
 
     <button onclick="startNavigation()">Start Navigation</button>
+    <div id="step-instruction"></div>
   </div>
 
-  <!-- QR Scanner Container -->
-  <div id="qr-reader"></div>
+  <!-- QR Reader Widget -->
+  <div id="qr-scanner-box">
+    <div id="qr-reader"></div>
+  </div>
 
-  <!-- 3D Camera & AR Overlay -->
+  <!-- 3D Camera & AR Scene -->
   <a-scene embedded arjs="sourceType: webcam; debugUIEnabled: false;">
-    <!-- Directional 3D Arrow Pointer -->
-    <a-entity id="ar-arrow" position="0 -0.5 -2" visible="false">
-      <a-cone color="#00FFFF" radius-bottom="0.4" radius-top="0" height="1.2" rotation="90 0 0"></a-cone>
-    </a-entity>
-    <a-entity camera></a-entity>
+    <a-camera position="0 0 0" look-controls>
+      <!-- AR Arrow in front of camera view -->
+      <a-entity id="ar-arrow" position="0 -0.4 -1.2" rotation="90 0 0" visible="false">
+        <a-cone color="#00FFFF" radius-bottom="0.25" radius-top="0" height="0.8"></a-cone>
+      </a-entity>
+    </a-camera>
   </a-scene>
 
   <script>
-    // -------------------------------------------------------------
-    // STEP 1: Graph Map Data Setup (Nodes & Edges)
-    // -------------------------------------------------------------
+    // Exact Map Data based on your route specifications
     const mapData = {
       nodes: {
         "HR_OFFICE": { name: "HR Office" },
-        "CORRIDOR_1": { name: "Corridor 1" },
-        "ELECTRONICS_LAB": { name: "Electronics Lab" },
-        "CS_LAB": { name: "CS Lab" },
-        "HOD_ROOM": { name: "HOD Room" }
+        "JUNCTION_1": { name: "Entrance (Turn Right)" },
+        "JUNCTION_2": { name: "Corridor Turn (Turn Left)" },
+        "JUNCTION_3": { name: "Lab Corridor (Turn Left)" },
+        "ELECTRONICS_LAB": { name: "Electronics Lab" }
       },
       graph: {
-        "HR_OFFICE": { "CORRIDOR_1": 1 },
-        "CORRIDOR_1": { "HR_OFFICE": 1, "ELECTRONICS_LAB": 1, "CS_LAB": 2 },
-        "ELECTRONICS_LAB": { "CORRIDOR_1": 1, "HOD_ROOM": 1 },
-        "CS_LAB": { "CORRIDOR_1": 2 },
-        "HOD_ROOM": { "ELECTRONICS_LAB": 1 }
+        "HR_OFFICE": { "JUNCTION_1": 7 },
+        "JUNCTION_1": { "HR_OFFICE": 7, "JUNCTION_2": 13 },
+        "JUNCTION_2": { "JUNCTION_1": 13, "JUNCTION_3": 6 },
+        "JUNCTION_3": { "JUNCTION_2": 6, "ELECTRONICS_LAB": 3 },
+        "ELECTRONICS_LAB": { "JUNCTION_3": 3 }
+      },
+      instructions: {
+        "HR_OFFICE->JUNCTION_1": "Walk Straight 7 Meters to Entrance",
+        "JUNCTION_1->JUNCTION_2": "Turn RIGHT and Walk 13 Meters",
+        "JUNCTION_2->JUNCTION_3": "Turn LEFT and Walk 6 Meters",
+        "JUNCTION_3->ELECTRONICS_LAB": "Turn LEFT and Walk 3 Meters to reach Electronics Lab"
       }
     };
 
     let currentStartNode = "";
 
-    // -------------------------------------------------------------
-    // STEP 2: QR Scanner Logic
-    // -------------------------------------------------------------
     function onScanSuccess(decodedText) {
-      // Assuming QR code text contains Node ID (e.g., "HR_OFFICE")
       if (mapData.nodes[decodedText]) {
         currentStartNode = decodedText;
         document.getElementById('start-node').innerText = mapData.nodes[decodedText].name;
-        document.getElementById('qr-reader').style.display = 'none';
+        document.getElementById('start-node').style.color = "green";
+        document.getElementById('qr-scanner-box').style.display = 'none';
         html5QrcodeScanner.clear();
       } else {
-        alert("Invalid QR Code for this map!");
+        alert("Scanned QR: " + decodedText + "\nPlease scan HR_OFFICE QR code!");
       }
     }
 
-    let html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 250 });
+    let html5QrcodeScanner = new Html5QrcodeScanner("qr-reader", { fps: 10, qrbox: 200 });
     html5QrcodeScanner.render(onScanSuccess);
 
-    // -------------------------------------------------------------
-    // STEP 3: Dijkstra Shortest Path Algorithm
-    // -------------------------------------------------------------
     function findShortestPath(graph, startNode, endNode) {
       let distances = {};
       let prev = {};
@@ -165,27 +180,33 @@
       return path;
     }
 
-    // -------------------------------------------------------------
-    // STEP 4: AR Navigation Launcher
-    // -------------------------------------------------------------
     function startNavigation() {
       const dest = document.getElementById('destination').value;
       if (!currentStartNode) {
-        alert("Please scan a QR code first!");
+        alert("Please scan HR_OFFICE QR code first!");
         return;
       }
       if (!dest) {
-        alert("Please select a destination!");
+        alert("Please select Electronics Lab!");
         return;
       }
 
       const route = findShortestPath(mapData.graph, currentStartNode, dest);
       
-      // Make 3D Arrow visible on camera
+      // Make 3D Arrow visible inside camera view
       const arrow = document.getElementById('ar-arrow');
       arrow.setAttribute('visible', 'true');
 
-      alert("Route Calculated: " + route.join(" ➔ ") + "\nFollow the Cyan 3D Arrow!");
+      // Show step-by-step guidance on screen
+      let textGuidance = "<b>Route Guide:</b><br>";
+      for(let i=0; i < route.length - 1; i++){
+        let edgeKey = route[i] + "->" + route[i+1];
+        if(mapData.instructions[edgeKey]){
+          textGuidance += (i+1) + ". " + mapData.instructions[edgeKey] + "<br>";
+        }
+      }
+
+      document.getElementById('step-instruction').innerHTML = textGuidance;
     }
   </script>
 </body>
