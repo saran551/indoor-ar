@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -11,21 +12,21 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', sans-serif; background: #000; overflow: hidden; }
 
-    /* Live Camera Stream Background */
+    /* Fullscreen Live Camera Background */
     #camera-feed {
       position: fixed; top: 0; left: 0;
       width: 100vw; height: 100vh;
       object-fit: cover; z-index: 1;
     }
 
-    /* 3D AR Layer View */
+    /* 3D AR Arrows Layer Canvas */
     #ar-canvas {
       position: fixed; top: 0; left: 0;
       width: 100vw; height: 100vh;
       z-index: 2; pointer-events: none;
     }
 
-    /* Top HUD Navigation Bar */
+    /* Top Navigation HUD Bar */
     #hud-panel {
       position: fixed; top: 15px; left: 50%; transform: translateX(-50%);
       z-index: 10; width: 90%; max-width: 400px;
@@ -34,7 +35,7 @@
       box-shadow: 0 4px 20px rgba(0,255,255,0.3);
     }
 
-    /* Bottom 2D Minimap Canvas Overlay */
+    /* Bottom 2D Minimap Overlay */
     #minimap-card {
       position: fixed; bottom: 20px; right: 20px;
       z-index: 10; background: rgba(0, 0, 0, 0.85); padding: 6px; border-radius: 10px;
@@ -64,11 +65,11 @@
 
   <div id="hud-panel">
     <div style="font-size:14px; font-weight:bold; color:#fff; margin-bottom:3px;">HR Office ➔ Electronics Lab</div>
-    <div id="route-step">Walk Straight 7m ➔ Turn Right 13m ➔ Turn Left 6m ➔ Left 3m</div>
+    <div id="route-step">Straight 7m ➔ Turn Right 13m ➔ Turn Left 6m ➔ Turn Left 3m</div>
   </div>
 
   <div id="minimap-card">
-    <canvas id="minimap-canvas" width="160" height="100"></canvas>
+    <canvas id="minimap-canvas" width="160" height="120"></canvas>
   </div>
 
   <div id="success-popup">
@@ -80,7 +81,7 @@
     let scene, camera, renderer;
     let userProgress = 0;
 
-    // 1. Automatic Camera Start on Link Open
+    // Start Live Back Camera
     navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
       .then(stream => { document.getElementById('camera-feed').srcObject = stream; })
       .catch(() => {
@@ -88,7 +89,7 @@
           .then(stream => { document.getElementById('camera-feed').srcObject = stream; });
       });
 
-    // 2. Initialize 3D AR Scene
+    // 1. Fixed 3D AR Arrows Scene
     function init3DScene() {
       const canvas = document.getElementById('ar-canvas');
       scene = new THREE.Scene();
@@ -96,13 +97,13 @@
       renderer = new THREE.WebGLRenderer({ canvas: canvas, alpha: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
 
-      // Floor Waypoints (7m -> Right 13m -> Left 6m -> Left 3m)
+      // Floor Waypoints according to paper layout
       const waypoints = [
-        new THREE.Vector3(0, -1, -2),
-        new THREE.Vector3(0, -1, -8),
-        new THREE.Vector3(5, -1, -8),
-        new THREE.Vector3(5, -1, -12),
-        new THREE.Vector3(3, -1, -12)
+        new THREE.Vector3(0, -1, -2), // HR Office Start
+        new THREE.Vector3(0, -1, -9), // 7m Straight
+        new THREE.Vector3(8, -1, -9), // 13m Right Turn
+        new THREE.Vector3(8, -1, -15), // 6m Left Turn (Straight)
+        new THREE.Vector3(5, -1, -15) // 3m Left Turn (Electronics Lab)
       ];
 
       const arrowGroup = new THREE.Group();
@@ -116,25 +117,28 @@
           let t = j / count;
           let pos = new THREE.Vector3().lerpVectors(start, end, t);
 
+          // Correct Upward Arrow Geometry Shape
           const shape = new THREE.Shape();
-          shape.moveTo(0, 0.35);
-          shape.lineTo(-0.2, -0.25);
-          shape.lineTo(-0.08, -0.15);
-          shape.lineTo(-0.08, -0.5);
-          shape.lineTo(0.08, -0.5);
-          shape.lineTo(0.08, -0.15);
-          shape.lineTo(0.2, -0.25);
+          shape.moveTo(0, 0.4); // Top Point
+          shape.lineTo(-0.25, -0.2); // Bottom Left Outer
+          shape.lineTo(-0.1, -0.1); // Inner Left Notch
+          shape.lineTo(-0.1, -0.5); // Bottom Left Base
+          shape.lineTo(0.1, -0.5); // Bottom Right Base
+          shape.lineTo(0.1, -0.1); // Inner Right Notch
+          shape.lineTo(0.25, -0.2); // Bottom Right Outer
           shape.closePath();
 
           const geom = new THREE.ShapeGeometry(shape);
           const mat = new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide });
           const mesh = new THREE.Mesh(geom, mat);
 
+          // Correct Floor Projection & Angle Calculation
           mesh.rotation.x = -Math.PI / 2;
           mesh.position.copy(pos);
 
           let dir = new THREE.Vector3().subVectors(end, start).normalize();
-          mesh.rotation.z = Math.atan2(dir.x, dir.z);
+          let angle = Math.atan2(-dir.x, -dir.z);
+          mesh.rotation.z = angle;
 
           arrowGroup.add(mesh);
         }
@@ -150,28 +154,44 @@
       animate();
     }
 
-    // 3. Render Live 2D Minimap
+    // 2. Fixed 2D Minimap Layout (Matches Paper Image Exactly)
     function renderMinimap() {
       const cvs = document.getElementById('minimap-canvas');
       const ctx = cvs.getContext('2d');
 
-      ctx.clearRect(0, 0, 160, 100);
+      ctx.clearRect(0, 0, 160, 120);
+      
+      // Border
       ctx.strokeStyle = "#444";
       ctx.lineWidth = 2;
-      ctx.strokeRect(5, 5, 150, 90);
+      ctx.strokeRect(5, 5, 150, 110);
 
+      // Map Route Path Points (HR Office -> Up 7m -> Right 13m -> Up 6m -> Left 3m -> Lab)
+      const points = [
+        {x: 30, y: 105}, // HR Office Start (Bottom Left)
+        {x: 30, y: 65}, // 7m Up
+        {x: 120, y: 65}, // 13m Right
+        {x: 120, y: 25}, // 6m Up
+        {x: 75, y: 25} // 3m Left (Electronics Lab)
+      ];
+
+      // Draw Cyan Route Line
       ctx.beginPath();
       ctx.lineWidth = 3;
       ctx.strokeStyle = "#00ffff";
-      
-      const points = [
-        {x: 20, y: 80}, {x: 20, y: 25}, {x: 100, y: 25}, {x: 100, y: 65}, {x: 135, y: 65}
-      ];
-
       ctx.moveTo(points[0].x, points[0].y);
-      for(let i=1; i<points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+      for(let i=1; i<points.length; i++) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
       ctx.stroke();
 
+      // Start & End Labels
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "10px sans-serif";
+      ctx.fillText("HR", 10, 110);
+      ctx.fillText("Lab", 50, 20);
+
+      // Animated Blue Dot Track Position
       let total = points.length - 1;
       let scaled = userProgress * total;
       let idx = Math.floor(scaled);
@@ -182,13 +202,16 @@
       let curX = points[idx].x + (points[idx+1].x - points[idx].x) * t;
       let curY = points[idx].y + (points[idx+1].y - points[idx].y) * t;
 
-      ctx.fillStyle = "#00bcd4";
+      ctx.fillStyle = "#00ffff";
       ctx.beginPath();
       ctx.arc(curX, curY, 5, 0, Math.PI * 2);
       ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
-    // Start 3D AR Scene & Live Walking Tracker
+    // Launch AR Engine
     init3DScene();
 
     let walkInterval = setInterval(() => {
